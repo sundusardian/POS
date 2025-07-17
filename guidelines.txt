@@ -1,0 +1,43 @@
+Please create a full-featured Point of Sale (POS) application with the following requirements. The app should be developed in stages: start from the customer-facing web pages, then move on to the admin dashboard, then build the API, and finally the mobile staff app.
+
+Tech Stack:
+- Frontend Web: Next.js (for both customer and admin interfaces)
+- Mobile App: Expo (React Native), designed in landscape mode
+- Backend/API: NestJS
+- Currency: All transactions and display must use IDR only
+- Design Guideline: Elegant, attractive UI with a user-friendly and intuitive UX
+
+Mobile App (for Staff):
+- Menu page
+- Cart page
+- Checkout page:
+  - Shows total
+  - Calculates change
+  - Option to print receipt
+- Incoming order page
+
+Web App:
+
+Admin Dashboard:
+- Menu management
+- Staff management
+- Branch management
+- Ingredient/stock management
+- Accounting & purchasing page
+- Desk management (including ability to print QR code linking to the customer menu page for each desk)
+- Settings page
+
+Customer Pages:
+- Menu page
+- Cart page
+- Checkout page with payment gateway integration
+
+API:
+- Build a centralized API with NestJS to serve data for all modules mentioned above: web (customer and admin) and mobile app.
+
+Additional Notes:
+- All UI components should be consistent across platforms.
+- Ensure that the admin dashboard is fully functional and allows dynamic configuration.
+- Prioritize responsiveness and smooth performance.
+- Secure the API with appropriate authentication for both staff and admin usage.
+- If there's anything important that has been missed, feel free to suggest and include it.
