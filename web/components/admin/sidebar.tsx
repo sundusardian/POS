@@ -2,7 +2,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  ChevronDown,
   ChevronsUpDown,
   ClipboardList,
   Coffee,
@@ -35,11 +34,18 @@ function SidebarItem({ href, icon, title, isActive }: SidebarItemProps) {
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent",
-        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-300 hover-lift",
+        isActive 
+          ? "bg-primary/10 text-primary font-medium border-l-2 border-primary shadow-sm" 
+          : "text-foreground hover:bg-primary/5 hover:text-primary border-l-2 border-transparent"
       )}
     >
-      {icon}
+      <div className={cn(
+        "transition-all duration-300",
+        isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+      )}>
+        {icon}
+      </div>
       <span>{title}</span>
     </Link>
   );
@@ -59,22 +65,40 @@ function SidebarGroup({ icon, title, children, defaultOpen = false }: SidebarGro
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className="w-full"
+      className="w-full mb-1"
     >
       <CollapsibleTrigger asChild>
         <Button
           variant="ghost"
-          className="flex w-full items-center justify-between rounded-lg p-2 text-sm font-medium hover:bg-accent"
+          className={cn(
+            "flex w-full items-center justify-between rounded-lg p-2 text-sm font-medium",
+            "transition-all duration-300 hover:bg-primary/5 group",
+            isOpen && "bg-primary/5 text-primary border-l-2 border-primary",
+            !isOpen && "border-l-2 border-transparent"
+          )}
         >
           <div className="flex items-center gap-3">
-            {icon}
-            <span>{title}</span>
+            <div className={cn(
+              "transition-colors duration-300",
+              isOpen ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+            )}>
+              {icon}
+            </div>
+            <span className={cn(
+              "transition-colors duration-300",
+              isOpen && "text-primary font-medium"
+            )}>{title}</span>
           </div>
-          <ChevronsUpDown className="h-4 w-4" />
+          <ChevronsUpDown className={cn(
+            "h-4 w-4 transition-transform duration-300",
+            isOpen ? "rotate-180 text-primary" : "text-muted-foreground group-hover:text-primary"
+          )} />
         </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="pl-6 pt-1">
-        {children}
+      <CollapsibleContent className="pl-6 pt-1 animate-slideInTop overflow-hidden">
+        <div className="border-l border-primary/20 pl-2 space-y-1">
+          {children}
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
@@ -84,15 +108,22 @@ export function AdminSidebar() {
   const pathname = usePathname();
   
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-background">
-      <div className="flex h-14 items-center border-b px-4">
-        <Link href="/admin" className="flex items-center gap-2 font-semibold">
-          <Coffee className="h-6 w-6" />
-          <span>POS Admin</span>
+    <div className="flex h-full w-64 flex-col border-r bg-background animate-fadeIn">
+      {/* Gradient accent at top of sidebar */}
+      <div className="h-0.5 bg-gradient-to-r from-primary via-secondary to-accent"></div>
+      
+      <div className="flex h-16 items-center border-b border-primary/10 px-4 bg-sidebar">
+        <Link 
+          href="/admin" 
+          className="flex items-center gap-2 font-semibold hover-scale transition-all duration-300 text-primary"
+        >
+          <Coffee className="h-6 w-6 text-primary animate-pulse" />
+          <span className="text-lg tracking-tight">POS Admin</span>
         </Link>
       </div>
-      <div className="flex-1 overflow-auto py-2">
-        <nav className="grid gap-1 px-2">
+      
+      <div className="flex-1 overflow-auto py-4 space-y-1">
+        <nav className="grid gap-1.5 px-2">
           <SidebarItem
             href="/admin"
             icon={<LayoutDashboard className="h-4 w-4" />}
