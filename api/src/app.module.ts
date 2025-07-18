@@ -1,5 +1,6 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -10,12 +11,16 @@ import { BranchModule } from './branch/branch.module';
 import { DeskModule } from './desk/desk.module';
 import { StaffModule } from './staff/staff.module';
 import { UsersService } from './users/users.service';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { RolesGuard } from './auth/guards/roles.guard';
+import jwtConfig from './config/jwt.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
+      load: [jwtConfig],
     }),
     PrismaModule,
     UsersModule,
@@ -26,7 +31,25 @@ import { UsersService } from './users/users.service';
     StaffModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+    {
+      provide: APP_PIPE,
+      useValue: new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+      }),
+    },
+  ],
 })
 export class AppModule implements OnModuleInit {
   constructor(private readonly usersService: UsersService) {}
