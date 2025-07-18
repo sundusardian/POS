@@ -1,5 +1,4 @@
 import { CustomerNavbar } from "@/components/customer/navbar";
-import { CustomerFooter } from "@/components/customer/footer";
 
 export default function CustomerLayout({
   children,
@@ -14,7 +13,6 @@ export default function CustomerLayout({
           {children}
         </div>
       </main>
-      <CustomerFooter />
     </div>
   );
 }

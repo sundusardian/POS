@@ -1,3 +1,8 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -5,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreditCard, Landmark, Wallet } from "lucide-react";
+import { CreditCard, Landmark, Wallet, ArrowLeft, Check, ShoppingBag } from "lucide-react";
 
 // Format currency to IDR
 const formatCurrency = (amount: number) => {
@@ -38,21 +43,125 @@ const ORDER_SUMMARY = {
 };
 
 export default function CheckoutPage() {
+  const [mounted, setMounted] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  if (!mounted) return null;
+  
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+  };
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    
+    // Simulate payment processing
+    setTimeout(() => {
+      setIsProcessing(false);
+      setIsComplete(true);
+    }, 2000);
+  };
+  
+  if (isComplete) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-background/95 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-md w-full"
+        >
+          <Card className="border-primary/10 hover:border-primary/30 transition-all duration-300 overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-secondary opacity-70"></div>
+            <CardHeader className="text-center">
+              <div className="mx-auto my-4 bg-primary/10 p-3 rounded-full w-16 h-16 flex items-center justify-center">
+                <Check className="h-8 w-8 text-primary" />
+              </div>
+              <CardTitle className="text-2xl text-primary">Order Complete!</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="mb-4">Your order has been successfully placed.</p>
+              <p className="font-medium">Order ID: <span className="text-primary">#IDR{Math.floor(Math.random() * 10000)}</span></p>
+              <p className="mt-6 text-muted-foreground">A confirmation has been sent to your email.</p>
+              
+              <div className="mt-8 p-4 bg-primary/5 rounded-lg border border-primary/10">
+                <h3 className="font-medium text-primary mb-2">Order Summary</h3>
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(ORDER_SUMMARY.subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span>Tax</span>
+                  <span>{formatCurrency(ORDER_SUMMARY.tax)}</span>
+                </div>
+                <Separator className="my-2 bg-primary/10" />
+                <div className="flex justify-between font-medium">
+                  <span>Total</span>
+                  <span className="text-accent">{formatCurrency(ORDER_SUMMARY.total)}</span>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Link href="/menu" className="w-full">
+                <Button className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white rounded-full transition-all duration-300 hover:shadow-md hover:scale-[1.02] flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4" />
+                  Continue Shopping
+                </Button>
+              </Link>
+            </CardFooter>
+          </Card>
+        </motion.div>
+      </div>
+    );
+  }
+  
   return (
-    <div className="container py-8">
-      <div className="flex flex-col gap-4">
-        <h1 className="text-3xl font-bold">Checkout</h1>
-        <p className="text-muted-foreground">
-          Complete your order by providing your details and payment information.
-        </p>
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/95 pb-20">
+      {/* Header */}
+      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border/40">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <Link href="/cart" className="text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to Cart</span>
+          </Link>
+          
+          <h1 className="text-xl font-bold text-primary">Checkout</h1>
+          
+          <div className="w-20"></div> {/* Empty div for balance */}
+        </div>
       </div>
       
-      <div className="mt-8 grid gap-8 md:grid-cols-3">
-        <div className="md:col-span-2 space-y-8">
+      <div className="container mx-auto px-4 py-8">
+        <motion.div 
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+          className="mt-4 grid gap-8 md:grid-cols-3"
+        >
+          <motion.div variants={itemVariants} className="md:col-span-2 space-y-8">
           {/* Customer Information */}
-          <Card>
+          <Card className="border-primary/10 hover:border-primary/30 transition-all duration-300 overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-secondary opacity-70"></div>
             <CardHeader>
-              <CardTitle>Customer Information</CardTitle>
+              <CardTitle className="text-primary">Customer Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -77,22 +186,23 @@ export default function CheckoutPage() {
           </Card>
           
           {/* Payment Method */}
-          <Card>
+          <Card className="border-primary/10 hover:border-primary/30 transition-all duration-300 overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-secondary opacity-70"></div>
             <CardHeader>
-              <CardTitle>Payment Method</CardTitle>
+              <CardTitle className="text-primary">Payment Method</CardTitle>
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="credit-card">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="credit-card" className="flex items-center gap-2">
+                <TabsList className="grid w-full grid-cols-3 bg-primary/5 p-1">
+                  <TabsTrigger value="credit-card" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-white transition-all duration-300">
                     <CreditCard className="h-4 w-4" />
                     <span>Credit Card</span>
                   </TabsTrigger>
-                  <TabsTrigger value="bank-transfer" className="flex items-center gap-2">
+                  <TabsTrigger value="bank-transfer" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-white transition-all duration-300">
                     <Landmark className="h-4 w-4" />
                     <span>Bank Transfer</span>
                   </TabsTrigger>
-                  <TabsTrigger value="e-wallet" className="flex items-center gap-2">
+                  <TabsTrigger value="e-wallet" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-white transition-all duration-300">
                     <Wallet className="h-4 w-4" />
                     <span>E-Wallet</span>
                   </TabsTrigger>
@@ -168,47 +278,70 @@ export default function CheckoutPage() {
               </Tabs>
             </CardContent>
           </Card>
-        </div>
+          </motion.div>
         
-        {/* Order Summary */}
-        <div>
-          <Card>
+          {/* Order Summary */}
+          <motion.div variants={itemVariants}>
+          <Card className="border-primary/10 hover:border-primary/30 transition-all duration-300 overflow-hidden sticky top-24">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-secondary opacity-70"></div>
             <CardHeader>
-              <CardTitle>Order Summary</CardTitle>
+              <CardTitle className="text-primary">Order Summary</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {ORDER_SUMMARY.items.map((item) => (
-                  <div key={item.id} className="flex justify-between">
-                    <span>
-                      {item.name} x {item.quantity}
+                  <motion.div 
+                    key={item.id} 
+                    className="flex justify-between p-2 rounded-lg hover:bg-primary/5 transition-colors duration-200"
+                    variants={itemVariants}
+                  >
+                    <span className="font-medium">
+                      {item.name} <span className="text-muted-foreground">x {item.quantity}</span>
                     </span>
-                    <span>{formatCurrency(item.price * item.quantity)}</span>
-                  </div>
+                    <span className="text-primary">{formatCurrency(item.price * item.quantity)}</span>
+                  </motion.div>
                 ))}
-                <Separator />
-                <div className="flex justify-between">
+                <Separator className="bg-primary/10" />
+                <div className="flex justify-between text-sm">
                   <span>Subtotal</span>
                   <span>{formatCurrency(ORDER_SUMMARY.subtotal)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between text-sm">
                   <span>Tax (10%)</span>
                   <span>{formatCurrency(ORDER_SUMMARY.tax)}</span>
                 </div>
-                <Separator />
-                <div className="flex justify-between font-bold">
+                <Separator className="bg-primary/10" />
+                <motion.div 
+                  className="flex justify-between font-bold" 
+                  initial={{ opacity: 0.8 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+                >
                   <span>Total</span>
-                  <span>{formatCurrency(ORDER_SUMMARY.total)}</span>
-                </div>
+                  <span className="text-primary text-lg">{formatCurrency(ORDER_SUMMARY.total)}</span>
+                </motion.div>
               </div>
             </CardContent>
             <CardFooter>
-              <Button className="w-full" size="lg">
-                Complete Order
+              <Button 
+                onClick={handleSubmit}
+                className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white rounded-full transition-all duration-300 hover:shadow-md hover:scale-[1.02]" 
+                size="lg"
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                    Processing...
+                  </>
+                ) : (
+                  "Complete Order"
+                )}
               </Button>
             </CardFooter>
           </Card>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
     </div>
   );
