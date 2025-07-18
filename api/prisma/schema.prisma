@@ -1,0 +1,92 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Use environment variables to configure the datasource
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User model with role-based access control
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(STAFF)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// Role enum for RBAC
+enum Role {
+  ADMIN
+  MANAGER
+  STAFF
+  CUSTOMER
+}
+
+// Category model for menu items
+model Category {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  description String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  menuItems   MenuItem[]
+
+  @@map("categories")
+}
+
+// MenuItem model for food and beverages
+model MenuItem {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Decimal  @default(0)
+  isAvailable Boolean  @default(true)
+  imageUrl    String?
+  category    Category @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("menu_items")
+}
+
+// Branch model for multiple locations
+model Branch {
+  id        String   @id @default(uuid())
+  name      String
+  address   String
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  desks     Desk[]
+
+  @@map("branches")
+}
+
+// Desk model for tables in restaurants
+model Desk {
+  id        String   @id @default(uuid())
+  number    String
+  capacity  Int      @default(4)
+  isActive  Boolean  @default(true)
+  qrCode    String?
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  branchId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("desks")
+}
