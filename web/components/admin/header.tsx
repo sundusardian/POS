@@ -1,4 +1,5 @@
-import { Bell, ChevronDown, Menu, Search } from "lucide-react";
+"use client";
+import { Bell, ChevronDown, Menu, Search, LogOut, Settings, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,12 +13,21 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
 
 interface AdminHeaderProps {
   onMobileMenuToggle?: () => void;
 }
 
 export function AdminHeader({ onMobileMenuToggle }: AdminHeaderProps) {
+  const { user, logout } = useAuth();
+  const router = useRouter();
+  
+  const handleLogout = () => {
+    logout();
+    router.push("/admin/login");
+  };
   return (
     <header className="fixed top-0 left-0 right-0 z-20 flex h-16 items-center gap-4 border-b bg-background px-4 lg:px-6">
       <Sheet>
@@ -56,12 +66,12 @@ export function AdminHeader({ onMobileMenuToggle }: AdminHeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="/avatars/admin.png" alt="Admin" />
-                <AvatarFallback>AD</AvatarFallback>
+                <AvatarImage src={user?.avatar || "/avatars/admin.png"} alt={user?.name || "Admin"} />
+                <AvatarFallback>{user?.name?.substring(0, 2) || "AD"}</AvatarFallback>
               </Avatar>
               <div className="hidden flex-col items-start text-sm md:flex">
-                <span>Admin User</span>
-                <span className="text-xs text-muted-foreground">admin@example.com</span>
+                <span>{user?.name || "Admin User"}</span>
+                <span className="text-xs text-muted-foreground">{user?.email || "admin@example.com"}</span>
               </div>
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             </Button>
@@ -69,10 +79,19 @@ export function AdminHeader({ onMobileMenuToggle }: AdminHeaderProps) {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuItem>
+              <User className="mr-2 h-4 w-4" />
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Logout</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

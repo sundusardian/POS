@@ -1,6 +1,10 @@
+"use client";
+
+// UI components
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowUpRight, DollarSign, ShoppingBag, Users } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 // Format currency to IDR
 const formatCurrency = (amount: number) => {
@@ -12,12 +16,14 @@ const formatCurrency = (amount: number) => {
 };
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
+  
   return (
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">
-          Welcome to your restaurant management dashboard.
+          Welcome, {user?.name || 'Admin'} {user?.email ? `(${user.email})` : ''} to your restaurant management dashboard.
         </p>
       </div>
       

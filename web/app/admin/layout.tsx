@@ -1,12 +1,52 @@
 "use client"
+import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { AdminHeader } from "@/components/admin/header";
 import { AdminSidebar } from "@/components/admin/sidebar";
+import { useAuth } from "@/lib/auth-context";
+import { Loader2 } from "lucide-react";
 
 export default function AdminLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    // Skip authentication check for login page
+    if (pathname === "/admin/login") return;
+    
+    // Redirect to login if not authenticated and not loading
+    if (!isLoading && !isAuthenticated) {
+      router.push("/admin/login");
+    }
+  }, [isAuthenticated, isLoading, router, pathname]);
+
+  // Show loading state while checking authentication
+  if (isLoading && pathname !== "/admin/login") {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="text-lg font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Skip rendering admin layout for login page
+  if (pathname === "/admin/login") {
+    return <>{children}</>;
+  }
+
+  // Only render admin layout if authenticated
+  if (!isAuthenticated) {
+    return null; // Will redirect in the useEffect
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <AdminHeader />

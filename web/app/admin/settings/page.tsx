@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,8 +10,10 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/lib/auth-context";
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -386,6 +390,40 @@ export default function SettingsPage() {
               </div>
               <div className="flex justify-end">
                 <Button>Change Password</Button>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Current User Information</CardTitle>
+              <CardDescription>
+                Details about the currently authenticated admin user.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center space-x-4">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={user?.avatar || "/avatars/admin.png"} alt={user?.name || "Admin"} />
+                  <AvatarFallback>{user?.name?.substring(0, 2) || "AD"}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{user?.name || "Admin User"}</p>
+                  <p className="text-sm text-muted-foreground">{user?.email || "admin@example.com"}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Last login: {new Date().toLocaleString()}</p>
+                </div>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label>Account Type</Label>
+                <div className="flex items-center space-x-2">
+                  <div className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                    Administrator
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <Button variant="outline">Update Profile</Button>
               </div>
             </CardContent>
           </Card>
