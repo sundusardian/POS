@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 // Use explicit typing for the PrismaClient instance
@@ -187,8 +187,100 @@ async function main(): Promise<void> {
         },
       });
     }
+
+    console.log('✅ Desks seeded successfully');
+
+    // Seed sample orders
+    console.log('🛒 Seeding sample orders...');
     
-    console.log('Seed completed successfully!');
+    const menuItems = await prisma.menuItem.findMany();
+    const desks = await prisma.desk.findMany();
+    const staffUser = await prisma.user.findFirst({ where: { role: 'STAFF' } });
+    
+    // Create a few sample orders
+    const sampleOrders = [
+      {
+        customerName: 'John Doe',
+        customerPhone: '+62812345678',
+        notes: 'Extra spicy please',
+        status: 'PREPARING' as const,
+        items: [
+          { menuItemId: menuItems[0].id, quantity: 2 },
+          { menuItemId: menuItems[1].id, quantity: 1 },
+        ],
+      },
+      {
+        customerName: 'Jane Smith',
+        customerPhone: '+62887654321',
+        notes: 'No ice',
+        status: 'READY' as const,
+        items: [
+          { menuItemId: menuItems[2].id, quantity: 1 },
+          { menuItemId: menuItems[3].id, quantity: 2 },
+        ],
+      },
+      {
+        customerName: 'Bob Wilson',
+        status: 'PENDING' as const,
+        items: [
+          { menuItemId: menuItems[4].id, quantity: 1 },
+        ],
+      },
+    ];
+
+    for (let i = 0; i < sampleOrders.length; i++) {
+      const orderData = sampleOrders[i];
+      const desk = desks[i % desks.length];
+      
+      // Calculate total amount
+      let totalAmount = 0;
+      const orderItemsData: any[] = [];
+      
+      for (const item of orderData.items) {
+        const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
+        if (menuItem) {
+          const itemTotal = Number(menuItem.price) * item.quantity;
+          totalAmount += itemTotal;
+          
+          orderItemsData.push({
+            menuItem: {
+              connect: { id: item.menuItemId },
+            },
+            quantity: item.quantity,
+            unitPrice: menuItem.price,
+            totalPrice: new Prisma.Decimal(itemTotal),
+          });
+        }
+      }
+      
+      const orderNumber = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(i + 1).padStart(4, '0')}`;
+      
+      await prisma.order.create({
+        data: {
+          orderNumber,
+          customerName: orderData.customerName,
+          customerPhone: orderData.customerPhone,
+          notes: orderData.notes,
+          status: orderData.status,
+          totalAmount,
+          desk: {
+            connect: { id: desk.id },
+          },
+          branch: {
+            connect: { id: desk.branchId },
+          },
+          staff: staffUser ? {
+            connect: { id: staffUser.id },
+          } : undefined,
+          orderItems: {
+            create: orderItemsData,
+          },
+        },
+      });
+    }
+    
+    console.log('✅ Sample orders seeded successfully');
+    console.log('🎉 Seed completed successfully!');
   } catch (error) {
     console.error('Seed failed:', error instanceof Error ? error.message : String(error));
     process.exit(1);

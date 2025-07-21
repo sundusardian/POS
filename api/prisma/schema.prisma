@@ -13,14 +13,16 @@ datasource db {
 
 // User model with role-based access control
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(STAFF)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String          @id @default(uuid())
+  name           String
+  email          String          @unique
+  password       String
+  role           Role            @default(STAFF)
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  orders         Order[]
+  stockMovements StockMovement[]
 
   @@map("users")
 }
@@ -48,16 +50,18 @@ model Category {
 
 // MenuItem model for food and beverages
 model MenuItem {
-  id          String   @id @default(uuid())
+  id          String      @id @default(uuid())
   name        String
   description String?
-  price       Decimal  @default(0)
-  isAvailable Boolean  @default(true)
+  price       Decimal     @default(0)
+  isAvailable Boolean     @default(true)
   imageUrl    String?
-  category    Category @relation(fields: [categoryId], references: [id])
+  category    Category    @relation(fields: [categoryId], references: [id])
   categoryId  String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+  ingredients MenuItemIngredient[]
 
   @@map("menu_items")
 }
@@ -72,6 +76,8 @@ model Branch {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   desks     Desk[]
+  orders    Order[]
+  stocks    Stock[]
 
   @@map("branches")
 }
@@ -87,6 +93,205 @@ model Desk {
   branchId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  orders    Order[]
 
   @@map("desks")
+}
+
+// Order model for customer orders
+model Order {
+  id            String      @id @default(uuid())
+  orderNumber   String      @unique
+  status        OrderStatus @default(PENDING)
+  totalAmount   Decimal     @default(0)
+  customerName  String?
+  customerPhone String?
+  notes         String?
+  desk          Desk?       @relation(fields: [deskId], references: [id])
+  deskId        String?
+  branch        Branch      @relation(fields: [branchId], references: [id])
+  branchId      String
+  staff         User?       @relation(fields: [staffId], references: [id])
+  staffId       String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  orderItems    OrderItem[]
+  payment       Payment?
+
+  @@map("orders")
+}
+
+// OrderItem model for items within an order
+model OrderItem {
+  id         String   @id @default(uuid())
+  quantity   Int      @default(1)
+  unitPrice  Decimal
+  totalPrice Decimal
+  notes      String?
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId    String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  menuItemId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("order_items")
+}
+
+// Payment model for order payments
+model Payment {
+  id            String        @id @default(uuid())
+  amount        Decimal
+  paymentMethod PaymentMethod @default(CASH)
+  status        PaymentStatus @default(PENDING)
+  paidAmount    Decimal       @default(0)
+  changeAmount  Decimal       @default(0)
+  receiptNumber String?
+  order         Order         @relation(fields: [orderId], references: [id])
+  orderId       String        @unique
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("payments")
+}
+
+// Order status enum
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  SERVED
+  COMPLETED
+  CANCELLED
+}
+
+// Payment method enum
+enum PaymentMethod {
+  CASH
+  CARD
+  DIGITAL_WALLET
+  BANK_TRANSFER
+}
+
+// Payment status enum
+enum PaymentStatus {
+  PENDING
+  PAID
+  PARTIAL
+  REFUNDED
+  FAILED
+}
+
+// Ingredient model for inventory management
+model Ingredient {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  description String?
+  unit        String     // e.g., "kg", "liter", "pieces"
+  category    String?    // e.g., "meat", "vegetables", "spices"
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  stocks      Stock[]
+  menuItems   MenuItemIngredient[]
+  suppliers   SupplierIngredient[]
+
+  @@map("ingredients")
+}
+
+// Stock model for tracking ingredient quantities
+model Stock {
+  id           String     @id @default(uuid())
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  ingredientId String
+  branch       Branch     @relation(fields: [branchId], references: [id])
+  branchId     String
+  quantity     Decimal    @default(0)
+  minQuantity  Decimal    @default(0) // Minimum stock level for alerts
+  maxQuantity  Decimal?   // Maximum stock capacity
+  unitCost     Decimal    @default(0)
+  expiryDate   DateTime?
+  batchNumber  String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  movements    StockMovement[]
+
+  @@unique([ingredientId, branchId])
+  @@map("stocks")
+}
+
+// Stock movement model for tracking inventory changes
+model StockMovement {
+  id          String            @id @default(uuid())
+  stock       Stock             @relation(fields: [stockId], references: [id])
+  stockId     String
+  type        StockMovementType
+  quantity    Decimal
+  reason      String?
+  reference   String?           // Order ID, supplier invoice, etc.
+  user        User?             @relation(fields: [userId], references: [id])
+  userId      String?
+  createdAt   DateTime          @default(now())
+
+  @@map("stock_movements")
+}
+
+// Junction table for menu items and their ingredients
+model MenuItemIngredient {
+  id           String     @id @default(uuid())
+  menuItem     MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  menuItemId   String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  ingredientId String
+  quantity     Decimal    // Quantity of ingredient needed for one menu item
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([menuItemId, ingredientId])
+  @@map("menu_item_ingredients")
+}
+
+// Supplier model for managing ingredient suppliers
+model Supplier {
+  id          String               @id @default(uuid())
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  isActive    Boolean              @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  ingredients SupplierIngredient[]
+
+  @@map("suppliers")
+}
+
+// Junction table for suppliers and their ingredients with pricing
+model SupplierIngredient {
+  id           String     @id @default(uuid())
+  supplier     Supplier   @relation(fields: [supplierId], references: [id])
+  supplierId   String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  ingredientId String
+  unitPrice    Decimal    @default(0)
+  minOrderQty  Decimal    @default(1)
+  leadTimeDays Int        @default(1)
+  isPreferred  Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([supplierId, ingredientId])
+  @@map("supplier_ingredients")
+}
+
+// Stock movement type enum
+enum StockMovementType {
+  IN          // Stock received
+  OUT         // Stock used/sold
+  ADJUSTMENT  // Manual adjustment
+  EXPIRED     // Stock expired
+  DAMAGED     // Stock damaged
+  TRANSFER    // Transfer between branches
 }

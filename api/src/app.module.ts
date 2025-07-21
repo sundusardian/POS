@@ -10,6 +10,8 @@ import { MenuModule } from './menu/menu.module';
 import { BranchModule } from './branch/branch.module';
 import { DeskModule } from './desk/desk.module';
 import { StaffModule } from './staff/staff.module';
+import { OrderModule } from './order/order.module';
+import { InventoryModule } from './inventory/inventory.module';
 import { UsersService } from './users/users.service';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
@@ -29,6 +31,8 @@ import jwtConfig from './config/jwt.config';
     BranchModule,
     DeskModule,
     StaffModule,
+    OrderModule,
+    InventoryModule,
   ],
   controllers: [AppController],
   providers: [
