@@ -3,17 +3,22 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { join } from 'path';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  
+  // Serve static files for WebSocket test client
+  app.useStaticAssets(join(__dirname, '..', 'public'));
   const configService = app.get(ConfigService);
   
   // Set global prefix for all routes
   app.setGlobalPrefix('api');
   
-  // Enable CORS for web and mobile clients
+  // Enable CORS for frontend applications and WebSocket test client
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://localhost:8081'],
+    origin: ['http://localhost:3000', 'http://localhost:8081', 'http://localhost:3001'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true,
   });
@@ -44,6 +49,7 @@ async function bootstrap() {
     .addTag('ingredients', 'Ingredient management')
     .addTag('stock', 'Stock management and tracking')
     .addTag('suppliers', 'Supplier management')
+    .addTag('reports', 'Sales reports and analytics')
     .addBearerAuth(
       {
         type: 'http',

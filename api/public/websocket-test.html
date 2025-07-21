@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS WebSocket Test Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .events {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f8f9fa;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .event {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-left: 3px solid #007bff;
+            background-color: white;
+        }
+        .event.order-created { border-left-color: #28a745; }
+        .event.order-status { border-left-color: #ffc107; }
+        .event.order-cancelled { border-left-color: #dc3545; }
+        .event.payment { border-left-color: #17a2b8; }
+        .event.kitchen { border-left-color: #fd7e14; }
+        .event.inventory { border-left-color: #6f42c1; }
+        input, button, select {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 POS Real-time Order Updates Test Client</h1>
+        
+        <div id="status" class="status disconnected">
+            Disconnected - Please enter JWT token and connect
+        </div>
+
+        <div class="controls">
+            <input type="text" id="jwtToken" placeholder="Enter JWT Token (get from /auth/login)" style="width: 300px;">
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()">Disconnect</button>
+            <button onclick="clearEvents()">Clear Events</button>
+        </div>
+
+        <div class="controls">
+            <input type="text" id="orderId" placeholder="Order ID">
+            <button onclick="joinOrderRoom()">Join Order Room</button>
+            <button onclick="leaveOrderRoom()">Leave Order Room</button>
+            
+            <input type="text" id="deskId" placeholder="Desk ID">
+            <button onclick="joinDeskRoom()">Join Desk Room</button>
+            <button onclick="leaveDeskRoom()">Leave Desk Room</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📡 Real-time Events</h2>
+        <div id="events" class="events">
+            <div class="event">
+                <strong>Waiting for events...</strong><br>
+                <span class="timestamp">Connect to start receiving real-time updates</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 Test Actions</h2>
+        <p>Use these buttons to test real-time updates (requires authentication):</p>
+        <div class="controls">
+            <button onclick="createTestOrder()">Create Test Order</button>
+            <button onclick="updateOrderStatus()">Update Order Status</button>
+            <button onclick="cancelOrder()">Cancel Order</button>
+            <button onclick="processPayment()">Process Payment</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket = null;
+        const statusEl = document.getElementById('status');
+        const eventsEl = document.getElementById('events');
+
+        function updateStatus(message, isConnected) {
+            statusEl.textContent = message;
+            statusEl.className = `status ${isConnected ? 'connected' : 'disconnected'}`;
+        }
+
+        function addEvent(type, data) {
+            const eventEl = document.createElement('div');
+            eventEl.className = `event ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            eventEl.innerHTML = `
+                <strong>${type.toUpperCase().replace('-', ' ')}</strong><br>
+                <span class="timestamp">${timestamp}</span><br>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            
+            eventsEl.insertBefore(eventEl, eventsEl.firstChild);
+            
+            // Keep only last 50 events
+            while (eventsEl.children.length > 50) {
+                eventsEl.removeChild(eventsEl.lastChild);
+            }
+        }
+
+        function connect() {
+            const token = document.getElementById('jwtToken').value.trim();
+            if (!token) {
+                alert('Please enter a JWT token first');
+                return;
+            }
+
+            if (socket) {
+                socket.disconnect();
+            }
+
+            updateStatus('Connecting...', false);
+
+            socket = io('http://localhost:3001/orders', {
+                auth: {
+                    token: token
+                }
+            });
+
+            socket.on('connect', () => {
+                updateStatus('Connected to order updates', true);
+                addEvent('connection', { message: 'Connected to WebSocket server' });
+            });
+
+            socket.on('disconnect', () => {
+                updateStatus('Disconnected', false);
+                addEvent('connection', { message: 'Disconnected from WebSocket server' });
+            });
+
+            socket.on('connected', (data) => {
+                addEvent('connection', data);
+            });
+
+            socket.on('error', (data) => {
+                addEvent('error', data);
+                updateStatus(`Error: ${data.message}`, false);
+            });
+
+            // Order events
+            socket.on('orderCreated', (data) => {
+                addEvent('order-created', data);
+            });
+
+            socket.on('orderStatusChanged', (data) => {
+                addEvent('order-status', data);
+            });
+
+            socket.on('orderCancelled', (data) => {
+                addEvent('order-cancelled', data);
+            });
+
+            socket.on('paymentReceived', (data) => {
+                addEvent('payment', data);
+            });
+
+            socket.on('kitchenAlert', (data) => {
+                addEvent('kitchen', data);
+            });
+
+            socket.on('inventoryAlert', (data) => {
+                addEvent('inventory', data);
+            });
+
+            // Room events
+            socket.on('joinedOrderRoom', (data) => {
+                addEvent('connection', { message: `Joined order room: ${data.orderId}` });
+            });
+
+            socket.on('leftOrderRoom', (data) => {
+                addEvent('connection', { message: `Left order room: ${data.orderId}` });
+            });
+
+            socket.on('joinedDeskRoom', (data) => {
+                addEvent('connection', { message: `Joined desk room: ${data.deskId}` });
+            });
+
+            socket.on('leftDeskRoom', (data) => {
+                addEvent('connection', { message: `Left desk room: ${data.deskId}` });
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+        }
+
+        function clearEvents() {
+            eventsEl.innerHTML = '<div class="event"><strong>Events cleared</strong></div>';
+        }
+
+        function joinOrderRoom() {
+            const orderId = document.getElementById('orderId').value.trim();
+            if (!orderId || !socket) {
+                alert('Please enter order ID and connect first');
+                return;
+            }
+            socket.emit('joinOrderRoom', { orderId });
+        }
+
+        function leaveOrderRoom() {
+            const orderId = document.getElementById('orderId').value.trim();
+            if (!orderId || !socket) {
+                alert('Please enter order ID and connect first');
+                return;
+            }
+            socket.emit('leaveOrderRoom', { orderId });
+        }
+
+        function joinDeskRoom() {
+            const deskId = document.getElementById('deskId').value.trim();
+            if (!deskId || !socket) {
+                alert('Please enter desk ID and connect first');
+                return;
+            }
+            socket.emit('joinDeskRoom', { deskId });
+        }
+
+        function leaveDeskRoom() {
+            const deskId = document.getElementById('deskId').value.trim();
+            if (!deskId || !socket) {
+                alert('Please enter desk ID and connect first');
+                return;
+            }
+            socket.emit('leaveDeskRoom', { deskId });
+        }
+
+        // Test functions (these would make API calls to trigger events)
+        async function createTestOrder() {
+            const token = document.getElementById('jwtToken').value.trim();
+            if (!token) {
+                alert('Please enter JWT token first');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:3001/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        customerName: 'Test Customer',
+                        customerPhone: '+1234567890',
+                        deskId: 'desk-1',
+                        branchId: 'branch-1',
+                        staffId: 'staff-1',
+                        orderItems: [
+                            {
+                                menuItemId: 'menu-1',
+                                quantity: 2,
+                                notes: 'Test order item'
+                            }
+                        ]
+                    })
+                });
+
+                if (response.ok) {
+                    const order = await response.json();
+                    addEvent('api-call', { message: 'Test order created', orderId: order.id });
+                } else {
+                    const error = await response.text();
+                    addEvent('error', { message: 'Failed to create test order', error });
+                }
+            } catch (error) {
+                addEvent('error', { message: 'Error creating test order', error: error.message });
+            }
+        }
+
+        async function updateOrderStatus() {
+            const orderId = document.getElementById('orderId').value.trim();
+            const token = document.getElementById('jwtToken').value.trim();
+            
+            if (!orderId || !token) {
+                alert('Please enter order ID and JWT token first');
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:3001/orders/${orderId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        status: 'PREPARING'
+                    })
+                });
+
+                if (response.ok) {
+                    addEvent('api-call', { message: 'Order status updated', orderId });
+                } else {
+                    const error = await response.text();
+                    addEvent('error', { message: 'Failed to update order status', error });
+                }
+            } catch (error) {
+                addEvent('error', { message: 'Error updating order status', error: error.message });
+            }
+        }
+
+        async function cancelOrder() {
+            const orderId = document.getElementById('orderId').value.trim();
+            const token = document.getElementById('jwtToken').value.trim();
+            
+            if (!orderId || !token) {
+                alert('Please enter order ID and JWT token first');
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:3001/orders/${orderId}/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    addEvent('api-call', { message: 'Order cancelled', orderId });
+                } else {
+                    const error = await response.text();
+                    addEvent('error', { message: 'Failed to cancel order', error });
+                }
+            } catch (error) {
+                addEvent('error', { message: 'Error cancelling order', error: error.message });
+            }
+        }
+
+        async function processPayment() {
+            const orderId = document.getElementById('orderId').value.trim();
+            const token = document.getElementById('jwtToken').value.trim();
+            
+            if (!orderId || !token) {
+                alert('Please enter order ID and JWT token first');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:3001/orders/payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        orderId: orderId,
+                        paymentMethod: 'CASH',
+                        paidAmount: 50.00
+                    })
+                });
+
+                if (response.ok) {
+                    addEvent('api-call', { message: 'Payment processed', orderId });
+                } else {
+                    const error = await response.text();
+                    addEvent('error', { message: 'Failed to process payment', error });
+                }
+            } catch (error) {
+                addEvent('error', { message: 'Error processing payment', error: error.message });
+            }
+        }
+
+        // Instructions on page load
+        window.onload = function() {
+            addEvent('info', {
+                message: 'Welcome to POS WebSocket Test Client',
+                instructions: [
+                    '1. Get JWT token from POST /auth/login',
+                    '2. Enter token and click Connect',
+                    '3. Join rooms for specific orders/desks',
+                    '4. Use test buttons to trigger events',
+                    '5. Watch real-time updates appear here'
+                ]
+            });
+        };
+    </script>
+</body>
+</html>

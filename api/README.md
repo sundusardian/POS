@@ -1,98 +1,284 @@
+# 🏪 POS System API
+
 <p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+  <img src="https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" alt="NestJS" />
+  <img src="https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma" />
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+<p align="center">
+  A comprehensive Point of Sale (POS) system backend API built with NestJS and Prisma ORM, featuring real-time order updates, inventory management, and multi-branch support.
 </p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## ✨ Features
 
-## Description
+### 🔐 Authentication & Authorization
+- JWT-based authentication with role-based access control
+- User roles: ADMIN, MANAGER, STAFF, CUSTOMER
+- Secure password hashing with bcrypt
+- Protected endpoints with guards and decorators
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### 📦 Order Management
+- Complete order lifecycle management
+- Order status tracking (PENDING → CONFIRMED → PREPARING → READY → SERVED → COMPLETED)
+- Unique order number generation
+- Payment processing with multiple methods (CASH, CARD, DIGITAL_WALLET)
+- Order cancellation and refund handling
 
-## Project setup
+### 📊 Inventory Management
+- Real-time stock tracking across multiple branches
+- Ingredient management with categories and units
+- Stock movement history and audit trails
+- Low stock and expiry date alerts
+- Supplier management with pricing
+- Automatic stock deduction on orders
+
+### 🏢 Multi-Branch Support
+- Branch and desk management
+- QR code generation for table ordering
+- Branch-specific inventory and staff
+- Location-based order routing
+
+### 🔄 Real-time Updates
+- WebSocket-based real-time notifications
+- Kitchen display system integration
+- Customer order status updates
+- Inventory alerts and notifications
+- Role-based event broadcasting
+
+### 📚 API Documentation
+- Comprehensive Swagger/OpenAPI documentation
+- Interactive API testing interface
+- Detailed request/response schemas
+- Authentication examples and guides
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
+- SQLite (for development) or PostgreSQL (for production)
+
+### Installation
 
 ```bash
-$ npm install
+# Clone the repository
+git clone <repository-url>
+cd pos-api
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your configuration
+
+# Generate Prisma client
+npx prisma generate
+
+# Run database migrations
+npx prisma migrate dev
+
+# Seed the database with sample data
+npx prisma db seed
 ```
 
-## Compile and run the project
+### Running the Application
 
 ```bash
-# development
-$ npm run start
+# Development mode with hot reload
+npm run start:dev
 
-# watch mode
-$ npm run start:dev
+# Production mode
+npm run start:prod
 
-# production mode
-$ npm run start:prod
+# Debug mode
+npm run start:debug
 ```
 
-## Run tests
+The API will be available at `http://localhost:3001`
+
+## 📖 API Documentation
+
+### Swagger UI
+Access the interactive API documentation at:
+- **Development**: http://localhost:3001/api/docs
+- **Production**: https://your-domain.com/api/docs
+
+### WebSocket Test Client
+Test real-time features at:
+- **Development**: http://localhost:3001/websocket-test.html
+
+### Authentication
+
+1. **Login** to get JWT token:
+```bash
+POST /auth/login
+{
+  "email": "admin@pos.com",
+  "password": "admin123"
+}
+```
+
+2. **Use token** in subsequent requests:
+```bash
+Authorization: Bearer <your-jwt-token>
+```
+
+### Key Endpoints
+
+#### Orders
+- `POST /orders` - Create new order
+- `GET /orders` - List orders with filters
+- `GET /orders/:id` - Get order details
+- `PATCH /orders/:id` - Update order status
+- `POST /orders/:id/cancel` - Cancel order
+- `POST /orders/payment` - Process payment
+
+#### Inventory
+- `GET /inventory/overview` - Dashboard overview
+- `GET /inventory/report` - Detailed inventory report
+- `GET /ingredients` - List ingredients
+- `GET /stock` - Stock levels by branch
+- `GET /stock/alerts` - Low stock alerts
+
+#### Menu Management
+- `GET /categories` - Menu categories
+- `GET /menu-items` - Menu items
+- `POST /menu-items` - Create menu item
+
+## 🏗️ Architecture
+
+### Technology Stack
+- **Framework**: NestJS (Node.js)
+- **Database**: Prisma ORM with SQLite/PostgreSQL
+- **Authentication**: JWT with Passport
+- **Real-time**: Socket.IO WebSockets
+- **Documentation**: Swagger/OpenAPI
+- **Validation**: class-validator
+- **Testing**: Jest
+
+### Project Structure
+```bash
+src/
+├── auth/              # Authentication module
+├── order/             # Order management
+├── inventory/         # Inventory system
+│   ├── ingredient.service.ts
+│   ├── stock.service.ts
+│   └── supplier.service.ts
+├── menu/              # Menu management
+├── staff/             # Staff management
+├── branch/            # Branch management
+├── websocket/         # Real-time updates
+├── prisma/            # Database service
+└── main.ts            # Application bootstrap
+```
+
+### Database Schema
+- **Users & Staff**: Authentication and role management
+- **Branches & Desks**: Multi-location support
+- **Menu & Categories**: Product catalog
+- **Orders & Payments**: Transaction management
+- **Inventory**: Stock tracking and supplier management
+
+## 🔄 Real-time Features
+
+### WebSocket Events
+- `orderCreated` - New order notifications
+- `orderStatusChanged` - Order progress updates
+- `orderCancelled` - Cancellation alerts
+- `paymentReceived` - Payment confirmations
+- `kitchenAlert` - Kitchen display notifications
+- `inventoryAlert` - Stock level warnings
+
+### Room Management
+- Role-based rooms (`role:STAFF`, `role:MANAGER`)
+- Branch-specific rooms (`branch:branch-id`)
+- Order tracking rooms (`order:order-id`)
+- Customer desk rooms (`desk:desk-id`)
+
+## 🧪 Testing
 
 ```bash
-# unit tests
-$ npm run test
+# Unit tests
+npm run test
 
-# e2e tests
-$ npm run test:e2e
+# Integration tests
+npm run test:e2e
 
-# test coverage
-$ npm run test:cov
+# Test coverage
+npm run test:cov
+
+# Watch mode
+npm run test:watch
 ```
 
-## Deployment
+## 🚀 Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Environment Variables
+```env
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/pos_db"
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+# JWT Configuration
+JWT_SECRET="your-super-secret-jwt-key"
+JWT_EXPIRATION="1d"
 
+# Server Configuration
+PORT=3001
+NODE_ENV=production
+
+# CORS Origins
+CORS_ORIGINS="https://your-frontend.com,https://your-mobile-app.com"
+```
+
+### Docker Deployment
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Build image
+docker build -t pos-api .
+
+# Run container
+docker run -p 3001:3001 --env-file .env pos-api
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Production Checklist
+- [ ] Set strong JWT secret
+- [ ] Configure production database
+- [ ] Set up SSL/HTTPS
+- [ ] Configure CORS origins
+- [ ] Set up monitoring and logging
+- [ ] Run database migrations
+- [ ] Set up backup strategy
 
-## Resources
+## 🤝 Contributing
 
-Check out a few resources that may come in handy when working with NestJS:
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## 📝 License
 
-## Support
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## 🆘 Support
 
-## Stay in touch
+For support and questions:
+- Create an issue in the repository
+- Check the [API documentation](http://localhost:3001/api/docs)
+- Review the [WebSocket test client](http://localhost:3001/websocket-test.html)
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## 🗺️ Roadmap
 
-## License
+- [ ] Advanced reporting and analytics
+- [ ] Mobile app integration
+- [ ] Payment gateway integration
+- [ ] Multi-currency support
+- [ ] Loyalty program features
+- [ ] Advanced inventory forecasting
+- [ ] Kitchen display system
+- [ ] Customer feedback system
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+---
+**Built with ❤️ using NestJS and Prisma**

@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStockDto } from './dto/create-stock.dto';
 import { CreateStockMovementDto, StockMovementType } from './dto/stock-movement.dto';
 import { Prisma } from '@prisma/client';
+import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import { Server } from 'socket.io';
 
 type StockWithDetails = Prisma.StockGetPayload<{
   include: {
@@ -24,7 +26,17 @@ type StockWithDetails = Prisma.StockGetPayload<{
 
 @Injectable()
 export class StockService {
-  constructor(private prisma: PrismaService) {}
+  private orderUpdatesGateway: any;
+
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => 'OrderUpdatesGateway')) private gatewayRef?: any,
+  ) {
+    // Set gateway reference after module initialization
+    setTimeout(() => {
+      this.orderUpdatesGateway = this.gatewayRef;
+    }, 1000);
+  }
 
   async create(createStockDto: CreateStockDto): Promise<StockWithDetails> {
     // Validate ingredient exists
@@ -77,6 +89,9 @@ export class StockService {
           reason: 'Initial stock',
         });
       }
+
+      // Check for low stock alert
+      this.checkAndEmitStockAlerts(stock);
 
       return stock;
     } catch (error) {
@@ -333,5 +348,63 @@ export class StockService {
         expiryDate: 'asc',
       },
     });
+  }
+
+  private checkAndEmitStockAlerts(stock: StockWithDetails) {
+    if (!this.orderUpdatesGateway) return;
+
+    const quantity = Number(stock.quantity);
+    const minQuantity = Number(stock.minQuantity);
+
+    // Check for low stock
+    if (quantity <= minQuantity && quantity > 0) {
+      this.orderUpdatesGateway.emitInventoryAlert({
+        type: 'LOW_STOCK',
+        ingredient: stock.ingredient,
+        stock: {
+          id: stock.id,
+          quantity: stock.quantity,
+          minQuantity: stock.minQuantity,
+          branchId: stock.branchId,
+          branch: stock.branch,
+        },
+      });
+    }
+
+    // Check for out of stock
+    if (quantity === 0) {
+      this.orderUpdatesGateway.emitInventoryAlert({
+        type: 'OUT_OF_STOCK',
+        ingredient: stock.ingredient,
+        stock: {
+          id: stock.id,
+          quantity: stock.quantity,
+          minQuantity: stock.minQuantity,
+          branchId: stock.branchId,
+          branch: stock.branch,
+        },
+      });
+    }
+
+    // Check for expiring stock (within 3 days)
+    if (stock.expiryDate) {
+      const daysUntilExpiry = Math.ceil(
+        (new Date(stock.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+      );
+      
+      if (daysUntilExpiry <= 3 && daysUntilExpiry >= 0) {
+        this.orderUpdatesGateway.emitInventoryAlert({
+          type: 'EXPIRING',
+          ingredient: stock.ingredient,
+          stock: {
+            id: stock.id,
+            quantity: stock.quantity,
+            expiryDate: stock.expiryDate,
+            branchId: stock.branchId,
+            branch: stock.branch,
+          },
+        });
+      }
+    }
   }
 }

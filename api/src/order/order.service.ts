@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -31,7 +31,17 @@ type OrderWithDetails = Prisma.OrderGetPayload<{
 
 @Injectable()
 export class OrderService {
-  constructor(private prisma: PrismaService) {}
+  private orderUpdatesGateway: any;
+
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => 'OrderUpdatesGateway')) private gatewayRef?: any,
+  ) {
+    // Set gateway reference after module initialization
+    setTimeout(() => {
+      this.orderUpdatesGateway = this.gatewayRef;
+    }, 1000);
+  }
 
   async create(createOrderDto: CreateOrderDto): Promise<OrderWithDetails> {
     // Generate unique order number
@@ -137,6 +147,12 @@ export class OrderService {
       },
     });
 
+    // Emit real-time event for new order
+    if (this.orderUpdatesGateway) {
+      this.orderUpdatesGateway.emitOrderCreated(order);
+      this.orderUpdatesGateway.emitKitchenAlert(order, 'NEW_ORDER');
+    }
+
     return order;
   }
 
@@ -227,6 +243,8 @@ export class OrderService {
       throw new BadRequestException('Cannot update completed or cancelled orders');
     }
 
+    const previousStatus = existingOrder.status;
+    
     const updatedOrder = await this.prisma.order.update({
       where: { id },
       data: {
@@ -258,6 +276,16 @@ export class OrderService {
       },
     });
 
+    // Emit real-time event for status change
+    if (this.orderUpdatesGateway && updateOrderDto.status && updateOrderDto.status !== previousStatus) {
+      this.orderUpdatesGateway.emitOrderStatusChanged(updatedOrder, previousStatus);
+      
+      // Send kitchen alerts for specific status changes
+      if (updateOrderDto.status === 'READY') {
+        this.orderUpdatesGateway.emitKitchenAlert(updatedOrder, 'READY');
+      }
+    }
+
     return updatedOrder;
   }
 
@@ -274,7 +302,7 @@ export class OrderService {
       throw new BadRequestException('Order is already completed or cancelled');
     }
 
-    return this.prisma.order.update({
+    const cancelledOrder = await this.prisma.order.update({
       where: { id },
       data: { status: 'CANCELLED' },
       include: {
@@ -299,6 +327,13 @@ export class OrderService {
         payment: true,
       },
     });
+
+    // Emit real-time event for order cancellation
+    if (this.orderUpdatesGateway) {
+      this.orderUpdatesGateway.emitOrderCancelled(cancelledOrder);
+    }
+
+    return cancelledOrder;
   }
 
   async createPayment(createPaymentDto: CreatePaymentDto) {
@@ -348,6 +383,14 @@ export class OrderService {
         where: { id: createPaymentDto.orderId },
         data: { status: 'COMPLETED' },
       });
+    }
+
+    // Get the order details for the event
+    const orderWithDetails = await this.findOne(createPaymentDto.orderId);
+
+    // Emit real-time event for payment received
+    if (this.orderUpdatesGateway) {
+      this.orderUpdatesGateway.emitPaymentReceived(payment, orderWithDetails);
     }
 
     return payment;

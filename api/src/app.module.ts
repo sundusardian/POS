@@ -12,6 +12,8 @@ import { DeskModule } from './desk/desk.module';
 import { StaffModule } from './staff/staff.module';
 import { OrderModule } from './order/order.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { WebsocketModule } from './websocket/websocket.module';
+import { ReportsModule } from './reports/reports.module';
 import { UsersService } from './users/users.service';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
@@ -33,6 +35,8 @@ import jwtConfig from './config/jwt.config';
     StaffModule,
     OrderModule,
     InventoryModule,
+    WebsocketModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [
