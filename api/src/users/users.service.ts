@@ -39,6 +39,26 @@ export class UsersService {
     return user;
   }
 
+  async findOneWithBranches(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        branches: {
+          include: {
+            branch: true,
+          },
+        },
+        primaryBranch: true,
+      },
+    });
+    
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    
+    return user;
+  }
+
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },

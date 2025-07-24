@@ -113,6 +113,7 @@
         <h2>🧪 Test Actions</h2>
         <p>Use these buttons to test real-time updates (requires authentication):</p>
         <div class="controls">
+            <button onclick="loadRealData()">Load Real Data</button>
             <button onclick="createTestOrder()">Create Test Order</button>
             <button onclick="updateOrderStatus()">Update Order Status</button>
             <button onclick="cancelOrder()">Cancel Order</button>
@@ -123,6 +124,13 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         let socket = null;
+        let isConnected = false;
+        let realData = {
+            branches: [],
+            desks: [],
+            menuItems: [],
+            users: []
+        };
         const statusEl = document.getElementById('status');
         const eventsEl = document.getElementById('events');
 
@@ -278,6 +286,50 @@
             socket.emit('leaveDeskRoom', { deskId });
         }
 
+        // Load real data from database
+        async function loadRealData() {
+            const token = document.getElementById('jwtToken').value.trim();
+            if (!token) {
+                addEvent('error', { message: 'JWT token required to load data' });
+                return;
+            }
+
+            try {
+                const headers = {
+                    'Authorization': `Bearer ${token}`
+                };
+
+                // Load all data in parallel
+                const [branchesRes, desksRes, menuItemsRes, usersRes] = await Promise.all([
+                    fetch('http://localhost:3001/api/test/branches', { headers }),
+                    fetch('http://localhost:3001/api/test/desks', { headers }),
+                    fetch('http://localhost:3001/api/test/menu-items', { headers }),
+                    fetch('http://localhost:3001/api/test/users', { headers })
+                ]);
+
+                if (branchesRes.ok && desksRes.ok && menuItemsRes.ok && usersRes.ok) {
+                    realData.branches = await branchesRes.json();
+                    realData.desks = await desksRes.json();
+                    realData.menuItems = await menuItemsRes.json();
+                    realData.users = await usersRes.json();
+                    
+                    addEvent('api-call', { 
+                        message: 'Real data loaded successfully', 
+                        data: {
+                            branches: realData.branches.length,
+                            desks: realData.desks.length,
+                            menuItems: realData.menuItems.length,
+                            users: realData.users.length
+                        }
+                    });
+                } else {
+                    addEvent('error', { message: 'Failed to load some data from database' });
+                }
+            } catch (error) {
+                addEvent('error', { message: 'Error loading real data', error: error.message });
+            }
+        }
+
         // Test functions (these would make API calls to trigger events)
         async function createTestOrder() {
             const token = document.getElementById('jwtToken').value.trim();
@@ -285,6 +337,39 @@
                 alert('Please enter JWT token first');
                 return;
             }
+
+            // Load real data if not already loaded
+            if (realData.branches.length === 0) {
+                await loadRealData();
+            }
+
+            // Check if we have real data
+            if (realData.branches.length === 0 || realData.desks.length === 0 || 
+                realData.menuItems.length === 0 || realData.users.length === 0) {
+                addEvent('error', { message: 'No real data available. Please ensure database is seeded.' });
+                return;
+            }
+
+            // Select random real data
+            const randomBranch = realData.branches[Math.floor(Math.random() * realData.branches.length)];
+            const branchDesks = realData.desks.filter(desk => desk.branchId === randomBranch.id);
+            const randomDesk = branchDesks.length > 0 ? branchDesks[Math.floor(Math.random() * branchDesks.length)] : realData.desks[0];
+            const randomStaff = realData.users.find(user => user.role === 'STAFF') || realData.users[0];
+            
+            // Select 1-3 random menu items
+            const orderItemsCount = Math.floor(Math.random() * 3) + 1;
+            const selectedMenuItems = [];
+            for (let i = 0; i < orderItemsCount; i++) {
+                const randomMenuItem = realData.menuItems[Math.floor(Math.random() * realData.menuItems.length)];
+                selectedMenuItems.push({
+                    menuItemId: randomMenuItem.id,
+                    quantity: Math.floor(Math.random() * 3) + 1,
+                    notes: Math.random() > 0.7 ? 'Special request' : ''
+                });
+            }
+
+            const customerNames = ['John Doe', 'Jane Smith', 'Bob Johnson', 'Alice Brown', 'Charlie Wilson'];
+            const randomCustomer = customerNames[Math.floor(Math.random() * customerNames.length)];
 
             try {
                 const response = await fetch('http://localhost:3001/api/test/orders', {
@@ -294,18 +379,13 @@
                         'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({
-                        customerName: 'Test Customer',
-                        customerPhone: '+1234567890',
-                        deskId: 'desk-1',
-                        branchId: 'branch-1',
-                        staffId: 'staff-1',
-                        orderItems: [
-                            {
-                                menuItemId: 'menu-1',
-                                quantity: 2,
-                                notes: 'Test order item'
-                            }
-                        ]
+                        customerName: randomCustomer,
+                        customerPhone: `+628${Math.floor(Math.random() * 100000000)}`,
+                        deskId: randomDesk.id,
+                        branchId: randomBranch.id,
+                        staffId: randomStaff.id,
+                        orderItems: selectedMenuItems,
+                        notes: Math.random() > 0.8 ? 'Please serve quickly' : ''
                     })
                 });
 

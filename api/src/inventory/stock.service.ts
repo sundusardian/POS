@@ -84,7 +84,7 @@ export class StockService {
       if (createStockDto.quantity > 0) {
         await this.createStockMovement({
           stockId: stock.id,
-          type: StockMovementType.IN,
+          type: StockMovementType.PURCHASE,
           quantity: createStockDto.quantity,
           reason: 'Initial stock',
         });
@@ -208,7 +208,7 @@ export class StockService {
     if (difference !== 0) {
       await this.createStockMovement({
         stockId: id,
-        type: difference > 0 ? StockMovementType.IN : StockMovementType.OUT,
+        type: difference > 0 ? StockMovementType.PURCHASE : StockMovementType.USAGE,
         quantity: Math.abs(difference),
         reason: 'Manual adjustment',
         userId,
@@ -232,12 +232,11 @@ export class StockService {
 
     // Calculate new quantity based on movement type
     switch (createStockMovementDto.type) {
-      case StockMovementType.IN:
+      case StockMovementType.PURCHASE:
         newQuantity += createStockMovementDto.quantity;
         break;
-      case StockMovementType.OUT:
-      case StockMovementType.EXPIRED:
-      case StockMovementType.DAMAGED:
+      case StockMovementType.USAGE:
+      case StockMovementType.WASTE:
         newQuantity -= createStockMovementDto.quantity;
         break;
       case StockMovementType.ADJUSTMENT:

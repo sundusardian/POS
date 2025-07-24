@@ -16,6 +16,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { User, JwtUser } from '../auth/decorators/user.decorator';
 import { Role } from '../auth/enums/role.enum';
 
 @ApiTags('orders')
@@ -45,8 +46,9 @@ export class OrderController {
   async findAll(
     @Query('branchId') branchId?: string,
     @Query('status') status?: string,
+    @User() user?: JwtUser,
   ) {
-    return this.orderService.findAll(branchId, status);
+    return this.orderService.findAll(branchId, status, user);
   }
 
   @ApiOperation({ summary: 'Get order by ID' })

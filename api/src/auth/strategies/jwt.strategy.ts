@@ -20,13 +20,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: JwtPayload) {
     // You can add additional validation here if needed
-    const user = await this.usersService.findOne(payload.sub);
+    const user = await this.usersService.findOneWithBranches(payload.sub);
+    
+    // Extract branch IDs from user branches
+    const branches = user.branches?.map(ub => ub.branchId) || [];
     
     // Return the user object that will be attached to the request object
     return {
+      sub: user.id,
       id: user.id,
       email: user.email,
       role: user.role,
+      primaryBranchId: user.primaryBranchId,
+      branches,
     };
   }
 }

@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateOrderDto } from './dto/update-order.dto';
+import { UpdateOrderDto, OrderStatus } from './dto/update-order.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { JwtUser } from '../auth/decorators/user.decorator';
 import { Prisma } from '@prisma/client';
 
 type OrderWithDetails = Prisma.OrderGetPayload<{
@@ -156,15 +157,41 @@ export class OrderService {
     return order;
   }
 
-  async findAll(branchId?: string, status?: string): Promise<OrderWithDetails[]> {
+  async findAll(branchId?: string, status?: string, user?: JwtUser): Promise<OrderWithDetails[]> {
     const where: Prisma.OrderWhereInput = {};
+    
 
+    // If branchId is provided, use it; otherwise use user's branches for filtering
     if (branchId) {
       where.branchId = branchId;
+    } else if (user) {
+      // For staff, filter by their assigned branches
+      // For admin/manager, they can see all branches unless specifically filtered
+      if (user.role === 'STAFF' && user.branches && user.branches.length > 0) {
+        where.branchId = {
+          in: user.branches,
+        };
+      } else if (user.role === 'STAFF' && user.primaryBranchId) {
+        // Fallback to primary branch if no branches assigned
+        where.branchId = user.primaryBranchId;
+      }
+      // Admin and Manager can see all branches if no specific branchId is provided
     }
 
     if (status) {
-      where.status = status as any;
+      // Handle comma-separated status values
+      if (status.includes(',')) {
+        const statusArray = status.split(',').map(s => s.trim()).filter(s => 
+          Object.values(OrderStatus).includes(s as OrderStatus)
+        ) as OrderStatus[];
+        if (statusArray.length > 0) {
+          where.status = {
+            in: statusArray,
+          };
+        }
+      } else if (Object.values(OrderStatus).includes(status as OrderStatus)) {
+        where.status = status as OrderStatus;
+      }
     }
 
     return this.prisma.order.findMany({

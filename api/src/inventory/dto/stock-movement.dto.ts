@@ -1,11 +1,10 @@
 import { IsString, IsNotEmpty, IsNumber, IsOptional, IsEnum, IsUUID, Min } from 'class-validator';
 
 export enum StockMovementType {
-  IN = 'IN',
-  OUT = 'OUT',
+  PURCHASE = 'PURCHASE',
+  USAGE = 'USAGE',
   ADJUSTMENT = 'ADJUSTMENT',
-  EXPIRED = 'EXPIRED',
-  DAMAGED = 'DAMAGED',
+  WASTE = 'WASTE',
   TRANSFER = 'TRANSFER',
 }
 
