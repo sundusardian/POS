@@ -18,6 +18,8 @@ import { UsersService } from './users/users.service';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import jwtConfig from './config/jwt.config';
+// Static file serving will be handled in main.ts
+import { join } from 'path';
 
 @Module({
   imports: [

@@ -8,13 +8,18 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  
-  // Serve static files for WebSocket test client
-  app.useStaticAssets(join(__dirname, '..', 'public'));
   const configService = app.get(ConfigService);
   
-  // Set global prefix for all routes
-  app.setGlobalPrefix('api');
+  // Serve static files for WebSocket test client and landing page
+  app.useStaticAssets(join(__dirname, '..', 'public'), {
+    prefix: '/',
+    index: 'index.html',
+  });
+  
+  // Set global prefix for API routes only
+  app.setGlobalPrefix('api', {
+    exclude: ['/websocket-test', '/test', '/'],
+  });
   
   // Enable CORS for frontend applications and WebSocket test client
   app.enableCors({
