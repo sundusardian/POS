@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS Kitchen Display</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #34495e;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .header {
+            background-color: var(--dark);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .connected { background-color: var(--secondary); }
+        .disconnected { background-color: var(--danger); }
+        
+        .auth-container {
+            padding: 1rem;
+            background-color: white;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .auth-form {
+            display: flex;
+            gap: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        button.disconnect {
+            background-color: var(--danger);
+        }
+        
+        .kitchen-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .order-column {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .column-header {
+            padding: 12px 16px;
+            font-weight: bold;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .column-header .count {
+            background-color: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+        
+        .new-orders .column-header { background-color: var(--primary); }
+        .preparing .column-header { background-color: var(--warning); }
+        .ready .column-header { background-color: var(--secondary); }
+        
+        .order-list {
+            padding: 10px;
+            min-height: 200px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        
+        .order-card {
+            background-color: var(--light);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .order-card.new {
+            animation: highlight 2s ease;
+        }
+        
+        .order-card.urgent {
+            border-left: 4px solid var(--danger);
+        }
+        
+        @keyframes highlight {
+            0% { background-color: rgba(231, 76, 60, 0.2); }
+            100% { background-color: var(--light); }
+        }
+        
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .order-number {
+            color: var(--dark);
+        }
+        
+        .order-time {
+            font-size: 0.8rem;
+            color: #777;
+        }
+        
+        .order-items {
+            margin-bottom: 10px;
+        }
+        
+        .order-item {
+            display: flex;
+            margin-bottom: 4px;
+        }
+        
+        .item-quantity {
+            font-weight: bold;
+            margin-right: 8px;
+            color: var(--dark);
+        }
+        
+        .item-name {
+            flex: 1;
+        }
+        
+        .item-notes {
+            font-style: italic;
+            font-size: 0.8rem;
+            color: #777;
+            margin-top: 2px;
+            margin-left: 20px;
+        }
+        
+        .order-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+        }
+        
+        .btn-next {
+            background-color: var(--secondary);
+        }
+        
+        .btn-cancel {
+            background-color: var(--danger);
+        }
+        
+        .btn-urgent {
+            background-color: var(--warning);
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: var(--primary);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+        }
+        
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .notification.error {
+            background-color: var(--danger);
+        }
+        
+        .notification.success {
+            background-color: var(--secondary);
+        }
+        
+        .empty-message {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-style: italic;
+        }
+        
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 20px;
+        }
+        
+        .audio-toggle {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .kitchen-display {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🍳 POS Kitchen Display</h1>
+        <div style="display: flex; align-items: center;">
+            <div class="audio-controls">
+                <button id="toggleAudio" class="audio-toggle">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+                <span id="audioStatus">Sound On</span>
+            </div>
+            <div class="connection-status">
+                <div id="statusIndicator" class="status-indicator disconnected"></div>
+                <span id="connectionStatus">Disconnected</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="auth-container">
+        <div class="auth-form">
+            <input type="text" id="jwtToken" placeholder="Enter Staff JWT Token (from /api/auth/login)">
+            <button id="connectBtn">Connect</button>
+            <button id="disconnectBtn" class="disconnect" disabled>Disconnect</button>
+        </div>
+    </div>
+    
+    <div class="kitchen-display">
+        <div class="order-column new-orders">
+            <div class="column-header">
+                <span>New Orders</span>
+                <span class="count" id="newOrdersCount">0</span>
+            </div>
+            <div class="order-list" id="newOrdersList">
+                <div class="empty-message">No new orders</div>
+            </div>
+        </div>
+        
+        <div class="order-column preparing">
+            <div class="column-header">
+                <span>Preparing</span>
+                <span class="count" id="preparingCount">0</span>
+            </div>
+            <div class="order-list" id="preparingList">
+                <div class="empty-message">No orders in preparation</div>
+            </div>
+        </div>
+        
+        <div class="order-column ready">
+            <div class="column-header">
+                <span>Ready to Serve</span>
+                <span class="count" id="readyCount">0</span>
+            </div>
+            <div class="order-list" id="readyList">
+                <div class="empty-message">No orders ready</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="notification" class="notification">
+        New order received!
+    </div>
+    
+    <audio id="newOrderSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+    <audio id="urgentSound" src="https://assets.mixkit.co/active_storage/sfx/2867/2867-preview.mp3" preload="auto"></audio>
+    
+    <script>
+        // DOM Elements
+        const jwtTokenInput = document.getElementById('jwtToken');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const newOrdersList = document.getElementById('newOrdersList');
+        const preparingList = document.getElementById('preparingList');
+        const readyList = document.getElementById('readyList');
+        const newOrdersCount = document.getElementById('newOrdersCount');
+        const preparingCount = document.getElementById('preparingCount');
+        const readyCount = document.getElementById('readyCount');
+        const notification = document.getElementById('notification');
+        const newOrderSound = document.getElementById('newOrderSound');
+        const urgentSound = document.getElementById('urgentSound');
+        const toggleAudioBtn = document.getElementById('toggleAudio');
+        const audioStatus = document.getElementById('audioStatus');
+        
+        // State
+        let socket = null;
+        let orders = {
+            'PENDING': {},
+            'CONFIRMED': {},
+            'PREPARING': {},
+            'READY': {}
+        };
+        let soundEnabled = true;
+        
+        // Functions
+        function connect() {
+            const token = jwtTokenInput.value.trim();
+            if (!token) {
+                showNotification('Please enter a JWT token', 'error');
+                return;
+            }
+            
+            try {
+                // Connect to WebSocket server
+                socket = io('http://localhost:3001/orders', {
+                    auth: { token }
+                });
+                
+                // Connection events
+                socket.on('connect', () => {
+                    updateConnectionStatus(true);
+                    showNotification('Connected to kitchen display system', 'success');
+                    loadInitialOrders();
+                });
+                
+                socket.on('disconnect', () => {
+                    updateConnectionStatus(false);
+                    showNotification('Disconnected from server', 'error');
+                });
+                
+                socket.on('connect_error', (err) => {
+                    console.error('Connection error:', err);
+                    updateConnectionStatus(false);
+                    showNotification('Connection error: ' + err.message, 'error');
+                });
+                
+                // Order events
+                socket.on('orderCreated', (data) => {
+                    console.log('New order received:', data);
+                    addOrder(data.order);
+                    showNotification(`New order #${data.order.orderNumber} received!`);
+                    if (soundEnabled) newOrderSound.play();
+                });
+                
+                socket.on('orderStatusChanged', (data) => {
+                    console.log('Order status changed:', data);
+                    updateOrderStatus(data.order);
+                });
+                
+                socket.on('orderCancelled', (data) => {
+                    console.log('Order cancelled:', data);
+                    removeOrder(data.order.id);
+                    showNotification(`Order #${data.order.orderNumber} has been cancelled`);
+                });
+                
+                socket.on('kitchenAlert', (data) => {
+                    console.log('Kitchen alert:', data);
+                    if (data.alertType === 'URGENT' && soundEnabled) {
+                        urgentSound.play();
+                        markOrderUrgent(data.order.id);
+                    }
+                });
+                
+                // Update UI
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                jwtTokenInput.disabled = true;
+                
+            } catch (error) {
+                console.error('Error connecting to WebSocket:', error);
+                showNotification('Failed to connect: ' + error.message, 'error');
+            }
+        }
+        
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+            
+            // Reset UI
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            jwtTokenInput.disabled = false;
+            updateConnectionStatus(false);
+            
+            // Clear orders
+            orders = {
+                'PENDING': {},
+                'CONFIRMED': {},
+                'PREPARING': {},
+                'READY': {}
+            };
+            renderOrders();
+        }
+        
+        function updateConnectionStatus(isConnected) {
+            if (isConnected) {
+                statusIndicator.className = 'status-indicator connected';
+                connectionStatus.textContent = 'Connected';
+            } else {
+                statusIndicator.className = 'status-indicator disconnected';
+                connectionStatus.textContent = 'Disconnected';
+            }
+        }
+        
+        function showNotification(message, type = 'info') {
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        async function loadInitialOrders() {
+            try {
+                const token = jwtTokenInput.value.trim();
+                const response = await fetch('http://localhost:3001/api/orders?status=PENDING,CONFIRMED,PREPARING,READY', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load orders');
+                }
+                
+                const data = await response.json();
+                
+                // Reset orders
+                orders = {
+                    'PENDING': {},
+                    'CONFIRMED': {},
+                    'PREPARING': {},
+                    'READY': {}
+                };
+                
+                // Add orders to state
+                data.forEach(order => {
+                    if (orders[order.status]) {
+                        orders[order.status][order.id] = order;
+                    }
+                });
+                
+                renderOrders();
+                showNotification(`Loaded ${data.length} active orders`, 'success');
+                
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                showNotification('Failed to load orders: ' + error.message, 'error');
+            }
+        }
+        
+        function addOrder(order) {
+            if (orders[order.status]) {
+                orders[order.status][order.id] = order;
+                renderOrders();
+            }
+        }
+        
+        function updateOrderStatus(order) {
+            // Remove from all status categories
+            for (const status in orders) {
+                if (orders[status][order.id]) {
+                    delete orders[status][order.id];
+                }
+            }
+            
+            // Add to new status category
+            if (orders[order.status]) {
+                orders[order.status][order.id] = order;
+            }
+            
+            renderOrders();
+        }
+        
+        function removeOrder(orderId) {
+            for (const status in orders) {
+                if (orders[status][orderId]) {
+                    delete orders[status][orderId];
+                }
+            }
+            renderOrders();
+        }
+        
+        function markOrderUrgent(orderId) {
+            for (const status in orders) {
+                if (orders[status][orderId]) {
+                    orders[status][orderId].urgent = true;
+                    renderOrders();
+                    
+                    // Find the element and add highlight
+                    const orderElement = document.getElementById(`order-${orderId}`);
+                    if (orderElement) {
+                        orderElement.classList.add('urgent');
+                        orderElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    
+                    break;
+                }
+            }
+        }
+        
+        function renderOrders() {
+            // Clear lists
+            newOrdersList.innerHTML = '';
+            preparingList.innerHTML = '';
+            readyList.innerHTML = '';
+            
+            // Combine PENDING and CONFIRMED into "New Orders"
+            const newOrders = { ...orders['PENDING'], ...orders['CONFIRMED'] };
+            const preparingOrders = orders['PREPARING'];
+            const readyOrders = orders['READY'];
+            
+            // Update counts
+            newOrdersCount.textContent = Object.keys(newOrders).length;
+            preparingCount.textContent = Object.keys(preparingOrders).length;
+            readyCount.textContent = Object.keys(readyOrders).length;
+            
+            // Render new orders
+            if (Object.keys(newOrders).length === 0) {
+                newOrdersList.innerHTML = '<div class="empty-message">No new orders</div>';
+            } else {
+                for (const orderId in newOrders) {
+                    const orderCard = createOrderCard(newOrders[orderId], 'PREPARING');
+                    newOrdersList.appendChild(orderCard);
+                }
+            }
+            
+            // Render preparing orders
+            if (Object.keys(preparingOrders).length === 0) {
+                preparingList.innerHTML = '<div class="empty-message">No orders in preparation</div>';
+            } else {
+                for (const orderId in preparingOrders) {
+                    const orderCard = createOrderCard(preparingOrders[orderId], 'READY');
+                    preparingList.appendChild(orderCard);
+                }
+            }
+            
+            // Render ready orders
+            if (Object.keys(readyOrders).length === 0) {
+                readyList.innerHTML = '<div class="empty-message">No orders ready</div>';
+            } else {
+                for (const orderId in readyOrders) {
+                    const orderCard = createOrderCard(readyOrders[orderId], 'SERVED');
+                    readyList.appendChild(orderCard);
+                }
+            }
+        }
+        
+        function createOrderCard(order, nextStatus) {
+            const orderCard = document.createElement('div');
+            orderCard.className = 'order-card';
+            orderCard.id = `order-${order.id}`;
+            
+            if (order.urgent) {
+                orderCard.classList.add('urgent');
+            }
+            
+            // Format time
+            const orderTime = new Date(order.createdAt);
+            const timeString = orderTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            // Calculate time elapsed
+            const now = new Date();
+            const minutesElapsed = Math.floor((now - orderTime) / 60000);
+            const timeElapsed = minutesElapsed > 0 ? `${minutesElapsed}m ago` : 'Just now';
+            
+            orderCard.innerHTML = `
+                <div class="order-header">
+                    <span class="order-number">#${order.orderNumber || 'N/A'}</span>
+                    <span class="order-time">${timeString} (${timeElapsed})</span>
+                </div>
+                <div class="order-items">
+                    ${renderOrderItems(order.items || [])}
+                </div>
+                <div class="order-actions">
+                    ${order.urgent ? '<span style="color: #e74c3c; margin-right: auto;"><i class="fas fa-exclamation-triangle"></i> URGENT</span>' : ''}
+                    <button class="btn-sm btn-urgent" onclick="markAsUrgent('${order.id}')">
+                        <i class="fas fa-exclamation-circle"></i> Mark Urgent
+                    </button>
+                    <button class="btn-sm btn-next" onclick="updateStatus('${order.id}', '${nextStatus}')">
+                        <i class="fas fa-arrow-right"></i> Move to ${nextStatus}
+                    </button>
+                </div>
+            `;
+            
+            return orderCard;
+        }
+        
+        function renderOrderItems(items) {
+            if (!items || items.length === 0) {
+                return '<div class="item-name">No items</div>';
+            }
+            
+            return items.map(item => `
+                <div class="order-item">
+                    <span class="item-quantity">${item.quantity}x</span>
+                    <span class="item-name">${item.menuItem ? item.menuItem.name : 'Unknown Item'}</span>
+                </div>
+                ${item.notes ? `<div class="item-notes">${item.notes}</div>` : ''}
+            `).join('');
+        }
+        
+        async function updateStatus(orderId, newStatus) {
+            if (!socket) {
+                showNotification('Not connected to server', 'error');
+                return;
+            }
+            
+            try {
+                const token = jwtTokenInput.value.trim();
+                const response = await fetch(`http://localhost:3001/api/test/orders/${orderId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to update order status');
+                }
+                
+                showNotification(`Order status updated to ${newStatus}`, 'success');
+                
+            } catch (error) {
+                console.error('Error updating order status:', error);
+                showNotification('Failed to update status: ' + error.message, 'error');
+            }
+        }
+        
+        async function markAsUrgent(orderId) {
+            if (!socket) {
+                showNotification('Not connected to server', 'error');
+                return;
+            }
+            
+            try {
+                // Find the order
+                let order = null;
+                for (const status in orders) {
+                    if (orders[status][orderId]) {
+                        order = orders[status][orderId];
+                        break;
+                    }
+                }
+                
+                if (!order) {
+                    throw new Error('Order not found');
+                }
+                
+                // Mark as urgent locally
+                markOrderUrgent(orderId);
+                
+                // This would typically call an API endpoint to mark the order as urgent
+                // For now, we'll just show a notification
+                showNotification(`Order #${order.orderNumber} marked as urgent`, 'warning');
+                if (soundEnabled) urgentSound.play();
+                
+            } catch (error) {
+                console.error('Error marking order as urgent:', error);
+                showNotification('Failed to mark as urgent: ' + error.message, 'error');
+            }
+        }
+        
+        function toggleAudio() {
+            soundEnabled = !soundEnabled;
+            if (soundEnabled) {
+                toggleAudioBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+                audioStatus.textContent = 'Sound On';
+            } else {
+                toggleAudioBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+                audioStatus.textContent = 'Sound Off';
+            }
+        }
+        
+        // Event Listeners
+        connectBtn.addEventListener('click', connect);
+        disconnectBtn.addEventListener('click', disconnect);
+        toggleAudioBtn.addEventListener('click', toggleAudio);
+        
+        // Make functions available globally for onclick handlers
+        window.updateStatus = updateStatus;
+        window.markAsUrgent = markAsUrgent;
+    </script>
+</body>
+</html>

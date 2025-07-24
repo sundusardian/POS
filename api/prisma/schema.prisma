@@ -23,6 +23,9 @@ model User {
   updatedAt      DateTime        @updatedAt
   orders         Order[]
   stockMovements StockMovement[]
+  primaryBranch  Branch?         @relation("UserPrimaryBranch", fields: [primaryBranchId], references: [id])
+  primaryBranchId String?
+  branches       UserBranch[]
 
   @@map("users")
 }
@@ -68,16 +71,18 @@ model MenuItem {
 
 // Branch model for multiple locations
 model Branch {
-  id        String   @id @default(uuid())
-  name      String
-  address   String
-  phone     String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  desks     Desk[]
-  orders    Order[]
-  stocks    Stock[]
+  id             String      @id @default(uuid())
+  name           String
+  address        String
+  phone          String?
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  desks          Desk[]
+  orders         Order[]
+  stocks         Stock[]
+  primaryUsers   User[]      @relation("UserPrimaryBranch")
+  assignedUsers  UserBranch[]
 
   @@map("branches")
 }
@@ -191,6 +196,7 @@ model Ingredient {
   unit        String     // e.g., "kg", "liter", "pieces"
   category    String?    // e.g., "meat", "vegetables", "spices"
   isActive    Boolean    @default(true)
+  unitPrice   Decimal    @default(0)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   stocks      Stock[]
@@ -288,10 +294,23 @@ model SupplierIngredient {
 
 // Stock movement type enum
 enum StockMovementType {
-  IN          // Stock received
-  OUT         // Stock used/sold
-  ADJUSTMENT  // Manual adjustment
-  EXPIRED     // Stock expired
-  DAMAGED     // Stock damaged
-  TRANSFER    // Transfer between branches
+  PURCHASE
+  USAGE
+  ADJUSTMENT
+  WASTE
+  TRANSFER
+}
+
+// UserBranch junction model for assigning users to branches
+model UserBranch {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branchId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, branchId])
+  @@map("user_branches")
 }

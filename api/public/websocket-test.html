@@ -287,7 +287,7 @@
             }
 
             try {
-                const response = await fetch('http://localhost:3001/orders', {
+                const response = await fetch('http://localhost:3001/api/test/orders', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -331,7 +331,7 @@
             }
 
             try {
-                const response = await fetch(`http://localhost:3001/orders/${orderId}`, {
+                const response = await fetch(`http://localhost:3001/api/test/orders/${orderId}`, {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
@@ -363,7 +363,7 @@
             }
 
             try {
-                const response = await fetch(`http://localhost:3001/orders/${orderId}/cancel`, {
+                const response = await fetch(`http://localhost:3001/api/test/orders/${orderId}/cancel`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -391,7 +391,7 @@
             }
 
             try {
-                const response = await fetch('http://localhost:3001/orders/payment', {
+                const response = await fetch('http://localhost:3001/api/test/orders/payment', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
