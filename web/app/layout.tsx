@@ -19,7 +19,9 @@ export const metadata: Metadata = {
 
 import { CartProvider } from "@/lib/cart-context";
 import { AuthProvider } from "@/lib/auth-context";
+import { WebSocketProvider } from "@/lib/websocket-context";
 import { Toaster } from "@/components/ui/sonner";
+import { SWRConfig } from 'swr';
 
 export default function RootLayout({
   children,
@@ -32,10 +34,20 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <CartProvider>
-            {children}
-            <Toaster />
-          </CartProvider>
+          <SWRConfig 
+            value={{
+              refreshInterval: 30000, // Refresh data every 30 seconds
+              revalidateOnFocus: false,
+              errorRetryCount: 3,
+            }}
+          >
+            <WebSocketProvider>
+              <CartProvider>
+                {children}
+                <Toaster />
+              </CartProvider>
+            </WebSocketProvider>
+          </SWRConfig>
         </AuthProvider>
       </body>
     </html>

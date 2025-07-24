@@ -1,94 +1,129 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { apiClient, User } from "./api-client";
 
-// Mock admin users for demonstration
-const MOCK_ADMINS = [
-  {
-    id: 1,
-    email: "admin@example.com",
-    password: "admin123", // In a real app, never store plain text passwords
-    name: "Admin User",
-    role: "admin",
-    avatar: "/avatars/admin.png"
-  },
-  {
-    id: 2,
-    email: "manager@example.com",
-    password: "manager123",
-    name: "Manager User",
-    role: "manager",
-    avatar: "/avatars/manager.png"
-  }
-];
-
-interface User {
-  id: number;
-  email: string;
-  name: string;
-  role: string;
-  avatar: string;
+interface AuthUser extends User {
+  avatar?: string;
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshAuth: () => Promise<boolean>;
   isAuthenticated: boolean;
+  token: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+
+  // Define refreshAuth function with useCallback to prevent re-renders
+  const refreshAuth = useCallback(async () => {
+    const storedToken = apiClient.getToken();
+    if (storedToken) {
+      try {
+        const response = await apiClient.getProfile();
+        if (response.data) {
+          const authUser: AuthUser = {
+            ...response.data,
+            avatar: `/avatars/${response.data.role.toLowerCase()}.png`
+          };
+          setUser(authUser);
+          return true;
+        }
+      } catch (err) {
+        console.error('Error refreshing auth:', err);
+      }
+    }
+    return false;
+  }, []);
 
   // Check if user is already logged in on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem("pos_admin_user");
-    if (storedUser) {
+    const checkAuth = async () => {
       try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-      } catch (e) {
-        console.error("Failed to parse stored user", e);
-        localStorage.removeItem("pos_admin_user");
+        const storedToken = apiClient.getToken();
+        if (storedToken) {
+          setToken(storedToken);
+          
+          // Try to get user profile with stored token
+          const response = await apiClient.getProfile();
+          if (response.data) {
+            const authUser: AuthUser = {
+              ...response.data,
+              avatar: `/avatars/${response.data.role.toLowerCase()}.png`
+            };
+            setUser(authUser);
+            console.log('Auth restored from token:', authUser.email);
+          } else {
+            // Token is invalid, clear it
+            console.log('Stored token is invalid, clearing auth');
+            apiClient.setToken(null);
+            setToken(null);
+            setUser(null);
+          }
+        } else {
+          console.log('No stored token found');
+        }
+      } catch (err) {
+        console.error('Error checking auth on mount:', err);
+        // Only clear auth if it's an authentication error (401/403)
+        if (err instanceof Error && (err.message.includes('401') || err.message.includes('403'))) {
+          apiClient.setToken(null);
+          setToken(null);
+          setUser(null);
+        }
+        // For other errors (network issues), keep the token and try again later
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+
+    checkAuth();
   }, []);
+
+  // Refresh auth when user returns to the tab
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden && user && token) {
+        // Silently refresh auth when user returns to tab
+        await refreshAuth();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user, token, refreshAuth]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await apiClient.login(email, password);
       
-      // Find user with matching credentials
-      const foundUser = MOCK_ADMINS.find(
-        admin => admin.email === email && admin.password === password
-      );
-      
-      if (foundUser) {
-        // Create a safe user object without the password
-        const safeUser = {
-          id: foundUser.id,
-          email: foundUser.email,
-          name: foundUser.name,
-          role: foundUser.role,
-          avatar: foundUser.avatar
+      if (response.data) {
+        const authUser: AuthUser = {
+          ...response.data.user,
+          avatar: `/avatars/${response.data.user.role.toLowerCase()}.png`
         };
         
-        // Store in state and localStorage
-        setUser(safeUser);
-        localStorage.setItem("pos_admin_user", JSON.stringify(safeUser));
+        setUser(authUser);
+        setToken(response.data.accessToken);
+
       } else {
-        setError("Invalid email or password");
+        setError(response.error || "Login failed");
       }
     } catch (err) {
       setError("An error occurred during login");
@@ -100,18 +135,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("pos_admin_user");
+    setToken(null);
+    apiClient.logout();
+  };
+
+
+
+  const value: AuthContextType = {
+    user,
+    isLoading,
+    error,
+    login,
+    logout,
+    refreshAuth,
+    isAuthenticated: !!user,
+    token,
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isLoading, 
-      error, 
-      login, 
-      logout,
-      isAuthenticated: !!user 
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

@@ -29,15 +29,18 @@ export default function AdminLayout({
   useEffect(() => {
     // Skip authentication check for login page
     if (pathname === "/admin/login") return;
+    console.log("isAuthenticated", isAuthenticated);
     
     // Redirect to login if not authenticated and not loading
-    if (!isLoading && !isAuthenticated) {
-      router.push("/admin/login");
+    if (!isAuthenticated) {
+      // Encode the current path as return URL
+      const returnUrl = encodeURIComponent(pathname);
+      router.push(`/admin/login?returnUrl=${returnUrl}`);
     }
   }, [isAuthenticated, isLoading, router, pathname]);
 
   // Show loading state while checking authentication
-  if (isLoading && pathname !== "/admin/login") {
+  if (isLoading && !isAuthenticated) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center space-y-4 animate-scaleIn">
@@ -52,14 +55,10 @@ export default function AdminLayout({
   }
 
   // Skip rendering admin layout for login page
-  if (pathname === "/admin/login") {
+  if (!isAuthenticated && pathname === "/admin/login") {
     return <>{children}</>;
   }
 
-  // Only render admin layout if authenticated
-  if (!isAuthenticated) {
-    return null; // Will redirect in the useEffect
-  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

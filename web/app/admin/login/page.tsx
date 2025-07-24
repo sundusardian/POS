@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,13 +16,18 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, error, isAuthenticated } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get('returnUrl');
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      router.push("/admin");
+      // Redirect to return URL if provided, otherwise go to admin dashboard
+      const destination = returnUrl ? decodeURIComponent(returnUrl) : "/admin";
+      console.log('Redirecting to:', destination);
+      router.push(destination);
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, returnUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +47,11 @@ export default function LoginPage() {
           <CardTitle className="text-2xl font-bold">Admin Login</CardTitle>
           <CardDescription>
             Enter your credentials to access the admin dashboard
+            {returnUrl && (
+              <div className="mt-2 text-sm text-blue-600">
+                You&apos;ll be redirected to: <code className="bg-blue-50 px-1 py-0.5 rounded text-xs">{decodeURIComponent(returnUrl)}</code>
+              </div>
+            )}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -79,7 +89,7 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button type="submit" className="w-full mt-4" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
