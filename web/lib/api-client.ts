@@ -1,5 +1,124 @@
 // API Client for POS Backend Integration
 
+// Inventory Management Interfaces
+export interface Ingredient {
+  id: string;
+  name: string;
+  description?: string;
+  unit: string; // e.g., "kg", "liter", "pieces"
+  category?: string; // e.g., "meat", "vegetables", "spices"
+  isActive: boolean;
+  unitPrice: number;
+  createdAt: string;
+  updatedAt: string;
+  stocks?: Stock[];
+  suppliers?: SupplierIngredient[];
+}
+
+export interface Stock {
+  id: string;
+  ingredientId: string;
+  ingredient?: Ingredient;
+  branchId: string;
+  branch?: Branch;
+  quantity: number;
+  minQuantity: number;
+  maxQuantity?: number;
+  unitCost: number;
+  expiryDate?: string;
+  batchNumber?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StockMovement {
+  id: string;
+  stockId: string;
+  stock?: Stock;
+  type: 'PURCHASE' | 'USAGE' | 'ADJUSTMENT' | 'WASTE' | 'TRANSFER';
+  quantity: number;
+  reason?: string;
+  reference?: string; // Order ID, supplier invoice, etc.
+  userId?: string;
+  user?: User;
+  createdAt: string;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  ingredients?: SupplierIngredient[];
+}
+
+export interface SupplierIngredient {
+  id: string;
+  supplierId: string;
+  supplier?: Supplier;
+  ingredientId: string;
+  ingredient?: Ingredient;
+  unitPrice: number;
+  minOrderQty: number;
+  leadTimeDays: number;
+  isPreferred: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InventoryOverview {
+  totalIngredients: number;
+  lowStockItems: number;
+  expiringItems: number;
+  totalStockValue: number;
+}
+
+export interface InventoryReport {
+  ingredients: number;
+  lowStockAlerts: number;
+  expiringStock: number;
+  recentMovements: StockMovement[];
+  details: {
+    lowStockItems: Stock[];
+    expiringItems: Stock[];
+  };
+}
+
+export interface PurchaseOrderItem {
+  id: string;
+  purchaseOrderId: string;
+  ingredientId: string;
+  ingredient?: Ingredient;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  orderNumber: string;
+  supplierId: string;
+  supplier?: Supplier;
+  branchId: string;
+  branch?: Branch;
+  status: 'PENDING' | 'PROCESSING' | 'DELIVERED' | 'CANCELLED';
+  totalAmount: number;
+  notes?: string;
+  expectedDeliveryDate?: string;
+  deliveredDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  items: PurchaseOrderItem[];
+}
+
 export interface ApiResponse<T = any> {
   data?: T | null;
   error?: string;
@@ -192,6 +311,112 @@ export interface UpdateBranchDto {
   address?: string;
   phone?: string;
   isActive?: boolean;
+}
+
+// Inventory DTOs
+export interface CreateIngredientDto {
+  name: string;
+  description?: string;
+  unit: string;
+  category?: string;
+  isActive?: boolean;
+  unitPrice: number;
+}
+
+export interface UpdateIngredientDto {
+  name?: string;
+  description?: string;
+  unit?: string;
+  category?: string;
+  isActive?: boolean;
+  unitPrice?: number;
+}
+
+export interface CreateStockDto {
+  ingredientId: string;
+  branchId: string;
+  quantity: number;
+  minQuantity: number;
+  maxQuantity?: number;
+  unitCost: number;
+  expiryDate?: string;
+  batchNumber?: string;
+}
+
+export interface UpdateStockDto {
+  quantity?: number;
+  minQuantity?: number;
+  maxQuantity?: number;
+  unitCost?: number;
+  expiryDate?: string;
+  batchNumber?: string;
+}
+
+export interface CreateStockMovementDto {
+  stockId: string;
+  type: 'PURCHASE' | 'USAGE' | 'ADJUSTMENT' | 'WASTE' | 'TRANSFER';
+  quantity: number;
+  reason?: string;
+  reference?: string;
+}
+
+export interface CreateSupplierDto {
+  name: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  isActive?: boolean;
+}
+
+export interface UpdateSupplierDto {
+  name?: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  isActive?: boolean;
+}
+
+export interface CreateSupplierIngredientDto {
+  supplierId: string;
+  ingredientId: string;
+  unitPrice: number;
+  minOrderQty?: number;
+  leadTimeDays?: number;
+  isPreferred?: boolean;
+}
+
+export interface UpdateSupplierIngredientDto {
+  unitPrice?: number;
+  minOrderQty?: number;
+  leadTimeDays?: number;
+  isPreferred?: boolean;
+}
+
+export interface PurchaseOrderItemDto {
+  ingredientId: string;
+  quantity: number;
+  unitPrice: number;
+  notes?: string;
+}
+
+export interface CreatePurchaseOrderDto {
+  supplierId: string;
+  branchId: string;
+  expectedDeliveryDate?: string;
+  notes?: string;
+  items: PurchaseOrderItemDto[];
+}
+
+export interface UpdatePurchaseOrderDto {
+  supplierId?: string;
+  branchId?: string;
+  status?: 'PENDING' | 'PROCESSING' | 'DELIVERED' | 'CANCELLED';
+  expectedDeliveryDate?: string;
+  deliveredDate?: string;
+  notes?: string;
+  items?: PurchaseOrderItemDto[];
 }
 
 class ApiClient {
@@ -473,12 +698,7 @@ class ApiClient {
   }
 
   // Test Data (Development only)
-  async getTestData(): Promise<ApiResponse<{
-    branches: Branch[];
-    desks: Desk[];
-    menuItems: MenuItem[];
-    users: User[];
-  }>> {
+  async getTestData(): Promise<ApiResponse<{ branches: Branch[]; desks: Desk[]; menuItems: MenuItem[]; users: User[]; }>> {
     const [branches, desks, menuItems, users] = await Promise.all([
       this.request<Branch[]>('/test/branches'),
       this.request<Desk[]>('/test/desks'),
@@ -493,7 +713,220 @@ class ApiClient {
         menuItems: menuItems.data || [],
         users: users.data || [],
       },
+      error: undefined,
     };
+  }
+
+  // Inventory Management
+  async getInventoryOverview(branchId?: string): Promise<ApiResponse<InventoryOverview>> {
+    const endpoint = branchId ? `/inventory/overview?branchId=${branchId}` : '/inventory/overview';
+    return this.request(endpoint);
+  }
+
+  async getInventoryReport(branchId?: string): Promise<ApiResponse<InventoryReport>> {
+    const endpoint = branchId ? `/inventory/report?branchId=${branchId}` : '/inventory/report';
+    return this.request(endpoint);
+  }
+
+  // Ingredients
+  async getIngredients(): Promise<ApiResponse<Ingredient[]>> {
+    return this.request('/ingredients');
+  }
+
+  async getIngredient(id: string): Promise<ApiResponse<Ingredient>> {
+    return this.request(`/ingredients/${id}`);
+  }
+
+  async createIngredient(ingredientData: CreateIngredientDto): Promise<ApiResponse<Ingredient>> {
+    return this.request('/ingredients', {
+      method: 'POST',
+      body: JSON.stringify(ingredientData),
+    });
+  }
+
+  async updateIngredient(id: string, ingredientData: UpdateIngredientDto): Promise<ApiResponse<Ingredient>> {
+    return this.request(`/ingredients/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(ingredientData),
+    });
+  }
+
+  async deleteIngredient(id: string): Promise<ApiResponse<void>> {
+    return this.request(`/ingredients/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Stock
+  async getStocks(branchId?: string, ingredientId?: string): Promise<ApiResponse<Stock[]>> {
+    let endpoint = '/stocks';
+    const params = [];
+    
+    if (branchId) {
+      params.push(`branchId=${branchId}`);
+    }
+    
+    if (ingredientId) {
+      params.push(`ingredientId=${ingredientId}`);
+    }
+    
+    if (params.length > 0) {
+      endpoint += `?${params.join('&')}`;
+    }
+    
+    return this.request(endpoint);
+  }
+
+  async getStock(id: string): Promise<ApiResponse<Stock>> {
+    return this.request(`/stocks/${id}`);
+  }
+
+  async createStock(stockData: CreateStockDto): Promise<ApiResponse<Stock>> {
+    return this.request('/stocks', {
+      method: 'POST',
+      body: JSON.stringify(stockData),
+    });
+  }
+
+  async updateStock(id: string, stockData: UpdateStockDto): Promise<ApiResponse<Stock>> {
+    return this.request(`/stocks/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(stockData),
+    });
+  }
+
+  async deleteStock(id: string): Promise<ApiResponse<void>> {
+    return this.request(`/stocks/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Stock Movements
+  async getStockMovements(stockId?: string, type?: string): Promise<ApiResponse<StockMovement[]>> {
+    let endpoint = '/stock-movements';
+    const params = [];
+    
+    if (stockId) {
+      params.push(`stockId=${stockId}`);
+    }
+    
+    if (type) {
+      params.push(`type=${type}`);
+    }
+    
+    if (params.length > 0) {
+      endpoint += `?${params.join('&')}`;
+    }
+    
+    return this.request(endpoint);
+  }
+
+  async createStockMovement(movementData: CreateStockMovementDto): Promise<ApiResponse<StockMovement>> {
+    return this.request('/stock-movements', {
+      method: 'POST',
+      body: JSON.stringify(movementData),
+    });
+  }
+
+  // Suppliers
+  async getSuppliers(): Promise<ApiResponse<Supplier[]>> {
+    return this.request('/suppliers');
+  }
+
+  async getSupplier(id: string): Promise<ApiResponse<Supplier>> {
+    return this.request(`/suppliers/${id}`);
+  }
+
+  async createSupplier(supplierData: CreateSupplierDto): Promise<ApiResponse<Supplier>> {
+    return this.request('/suppliers', {
+      method: 'POST',
+      body: JSON.stringify(supplierData),
+    });
+  }
+
+  async updateSupplier(id: string, supplierData: UpdateSupplierDto): Promise<ApiResponse<Supplier>> {
+    return this.request(`/suppliers/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(supplierData),
+    });
+  }
+
+  async deleteSupplier(id: string): Promise<ApiResponse<void>> {
+    return this.request(`/suppliers/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Supplier Ingredients
+  getSupplierIngredients(supplierId?: string, ingredientId?: string): Promise<ApiResponse<SupplierIngredient[]>> {
+    const params = new URLSearchParams();
+    if (supplierId) params.append('supplierId', supplierId);
+    if (ingredientId) params.append('ingredientId', ingredientId);
+    
+    const queryString = params.toString();
+    return this.request<SupplierIngredient[]>(`/supplier-ingredients${queryString ? `?${queryString}` : ''}`);
+  }
+
+  createSupplierIngredient(data: CreateSupplierIngredientDto): Promise<ApiResponse<SupplierIngredient>> {
+    return this.request<SupplierIngredient>('/supplier-ingredients', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  updateSupplierIngredient(id: string, data: UpdateSupplierIngredientDto): Promise<ApiResponse<SupplierIngredient>> {
+    return this.request<SupplierIngredient>(`/supplier-ingredients/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  deleteSupplierIngredient(id: string): Promise<ApiResponse<void>> {
+    return this.request<void>(`/supplier-ingredients/${id}`, {
+      method: 'DELETE',
+    });
+  }
+  
+  // Purchase Orders
+  getPurchaseOrders(supplierId?: string, branchId?: string, status?: string): Promise<ApiResponse<PurchaseOrder[]>> {
+    const params = new URLSearchParams();
+    if (supplierId) params.append('supplierId', supplierId);
+    if (branchId) params.append('branchId', branchId);
+    if (status) params.append('status', status);
+    
+    const queryString = params.toString();
+    return this.request<PurchaseOrder[]>(`/purchase-orders${queryString ? `?${queryString}` : ''}`);
+  }
+  
+  getPurchaseOrder(id: string): Promise<ApiResponse<PurchaseOrder>> {
+    return this.request<PurchaseOrder>(`/purchase-orders/${id}`);
+  }
+  
+  createPurchaseOrder(data: CreatePurchaseOrderDto): Promise<ApiResponse<PurchaseOrder>> {
+    return this.request<PurchaseOrder>('/purchase-orders', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+  
+  updatePurchaseOrder(id: string, data: UpdatePurchaseOrderDto): Promise<ApiResponse<PurchaseOrder>> {
+    return this.request<PurchaseOrder>(`/purchase-orders/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+  
+  deletePurchaseOrder(id: string): Promise<ApiResponse<void>> {
+    return this.request<void>(`/purchase-orders/${id}`, {
+      method: 'DELETE',
+    });
+  }
+  
+  updatePurchaseOrderStatus(id: string, status: string): Promise<ApiResponse<PurchaseOrder>> {
+    return this.request<PurchaseOrder>(`/purchase-orders/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
   }
 }
 
