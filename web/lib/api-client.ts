@@ -100,8 +100,8 @@ export interface Staff {
   email: string;
   role: 'ADMIN' | 'MANAGER' | 'STAFF';
   isActive: boolean;
-  branchId?: string;
-  branch?: Branch;
+  primaryBranchId?: string;
+  primaryBranch?: Branch;
   createdAt: string;
   updatedAt: string;
 }
@@ -168,7 +168,7 @@ export interface CreateStaffDto {
   password: string;
   role?: 'ADMIN' | 'MANAGER' | 'STAFF';
   isActive?: boolean;
-  branchId?: string;
+  primaryBranchId?: string;
 }
 
 export interface UpdateStaffDto {
@@ -177,7 +177,7 @@ export interface UpdateStaffDto {
   password?: string;
   role?: 'ADMIN' | 'MANAGER' | 'STAFF';
   isActive?: boolean;
-  branchId?: string;
+  primaryBranchId?: string;
 }
 
 export interface CreateBranchDto {

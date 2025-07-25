@@ -67,7 +67,7 @@ export default function OrderManagement() {
   const [orderForm, setOrderForm] = useState({
     customerName: '',
     customerPhone: '',
-    deskId: '',
+    deskId: 'none',
     branchId: '',
     notes: '',
     items: [] as { menuItemId: string; quantity: number; notes?: string }[]
@@ -105,7 +105,7 @@ export default function OrderManagement() {
       await createOrder({
         customerName: orderForm.customerName || undefined,
         customerPhone: orderForm.customerPhone || undefined,
-        deskId: orderForm.deskId || undefined,
+        deskId: orderForm.deskId === "none" || !orderForm.deskId ? undefined : orderForm.deskId,
         branchId: orderForm.branchId,
         notes: orderForm.notes || undefined,
         items: orderForm.items
@@ -115,7 +115,7 @@ export default function OrderManagement() {
       setOrderForm({
         customerName: '',
         customerPhone: '',
-        deskId: '',
+        deskId: 'none',
         branchId: '',
         notes: '',
         items: []
@@ -277,7 +277,7 @@ export default function OrderManagement() {
                         <SelectValue placeholder="Select table (optional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No table</SelectItem>
+                        <SelectItem value="none">No table</SelectItem>
                         {desks?.filter(desk => !orderForm.branchId || desk.branchId === orderForm.branchId).map((desk) => (
                           <SelectItem key={desk.id} value={desk.id}>
                             Table {desk.number}
@@ -378,7 +378,7 @@ export default function OrderManagement() {
                   setOrderForm({
                     customerName: '',
                     customerPhone: '',
-                    deskId: '',
+                    deskId: 'none',
                     branchId: '',
                     notes: '',
                     items: []

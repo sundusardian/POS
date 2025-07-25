@@ -8,7 +8,14 @@ import apiClient, {
   Desk, 
   Order,
   User,
-  Staff
+  Staff,
+  CreateStaffDto,
+  UpdateStaffDto,
+  CreateOrderDto,
+  CreateBranchDto,
+  UpdateBranchDto,
+  CreateDeskDto,
+  UpdateDeskDto
 } from './api-client';
 
 // Hook for categories
@@ -34,7 +41,7 @@ export function useCategories() {
 export function useCategory(id: string | null) {
   const { data, error, isLoading, mutate: refetch } = useSWR<ApiResponse<Category>>(
     id ? `/categories/${id}` : null,
-    () => id ? apiClient.getCategory(id) : null,
+    id ? () => apiClient.getCategory(id) : null,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,
@@ -73,7 +80,7 @@ export function useBranches() {
 export function useBranch(id: string | null) {
   const { data, error, isLoading, mutate: refetch } = useSWR<ApiResponse<Branch>>(
     id ? `/branches/${id}` : null,
-    () => id ? apiClient.getBranch(id) : null,
+    id ? () => apiClient.getBranch(id) : null,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,
@@ -113,7 +120,7 @@ export function useMenuItems(categoryId?: string) {
 export function useMenuItem(id: string | null) {
   const { data, error, isLoading, mutate: refetch } = useSWR<ApiResponse<MenuItem>>(
     id ? `/menu-items/${id}` : null,
-    () => id ? apiClient.getMenuItem(id) : null,
+    id ? () => apiClient.getMenuItem(id) : null,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,
@@ -153,7 +160,7 @@ export function useDesks(branchId?: string) {
 export function useDesk(id: string | null) {
   const { data, error, isLoading, mutate: refetch } = useSWR<ApiResponse<Desk>>(
     id ? `/desks/${id}` : null,
-    () => id ? apiClient.getDesk(id) : null,
+    id ? () => apiClient.getDesk(id) : null,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,
@@ -213,39 +220,40 @@ export function useOrder(id: string | null) {
 }
 
 // Hook for staff
-export function useStaff(branchId?: string) {
-  const { data, error, isLoading, mutate } = useSWR(
-    branchId ? `/staff?branchId=${branchId}` : '/staff',
-    async () => {
-      const response = await apiClient.getStaff(branchId);
-      return response.data;
+export function useStaff(primaryBranchId?: string) {
+  const { data, error, isLoading, mutate: refetch } = useSWR<ApiResponse<Staff[]>>(
+    primaryBranchId ? `/staff?primaryBranchId=${primaryBranchId}` : '/staff',
+    () => apiClient.getStaff(primaryBranchId),
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
     }
   );
 
   return {
-    staff: data || [],
+    staff: data?.data || [],
     isLoading,
-    error,
-    refetch: mutate,
+    error: data?.error || error,
+    refetch,
   };
 }
 
 // Hook for a single staff member
 export function useStaffMember(id: string | null) {
-  const { data, error, isLoading, mutate } = useSWR(
+  const { data, error, isLoading, mutate: refetch } = useSWR<ApiResponse<Staff>>(
     id ? `/staff/${id}` : null,
-    async () => {
-      if (!id) return null;
-      const response = await apiClient.getStaffMember(id);
-      return response.data;
+    id ? () => apiClient.getStaffMember(id) : null,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
     }
   );
 
   return {
-    staffMember: data,
+    staffMember: data?.data,
     isLoading,
-    error,
-    refetch: mutate,
+    error: data?.error || error,
+    refetch,
   };
 }
 
@@ -275,10 +283,11 @@ export function useTestData() {
 
 // Utility hook for order mutations (create, update, delete)
 export function useOrderMutations() {
-  const createOrder = async (orderData: any) => {
+  const createOrder = async (orderData: CreateOrderDto) => {
     const response = await apiClient.createOrder(orderData);
     return response;
   };
+
 
   const updateOrderStatus = async (id: string, status: string) => {
     const response = await apiClient.updateOrderStatus(id, status);
@@ -299,12 +308,12 @@ export function useOrderMutations() {
 
 // Utility hook for desk mutations (create, update, delete)
 export function useDeskMutations() {
-  const createDesk = async (deskData: any) => {
+  const createDesk = async (deskData: CreateDeskDto) => {
     const response = await apiClient.createDesk(deskData);
     return response;
   };
 
-  const updateDesk = async (id: string, deskData: any) => {
+  const updateDesk = async (id: string, deskData: Partial<UpdateDeskDto>) => {
     const response = await apiClient.updateDesk(id, deskData);
     return response;
   };
@@ -329,12 +338,12 @@ export function useDeskMutations() {
 
 // Utility hook for staff mutations (create, update, delete)
 export function useStaffMutations() {
-  const createStaff = async (staffData: any) => {
+  const createStaff = async (staffData: CreateStaffDto) => {
     const response = await apiClient.createStaff(staffData);
     return response;
   };
 
-  const updateStaff = async (id: string, staffData: any) => {
+  const updateStaff = async (id: string, staffData: UpdateStaffDto) => {
     const response = await apiClient.updateStaff(id, staffData);
     return response;
   };
@@ -353,12 +362,12 @@ export function useStaffMutations() {
 
 // Utility hook for branch mutations (create, update, delete)
 export function useBranchMutations() {
-  const createBranch = async (branchData: any) => {
+  const createBranch = async (branchData: CreateBranchDto) => {
     const response = await apiClient.createBranch(branchData);
     return response;
   };
 
-  const updateBranch = async (id: string, branchData: any) => {
+  const updateBranch = async (id: string, branchData: UpdateBranchDto) => {
     const response = await apiClient.updateBranch(id, branchData);
     return response;
   };

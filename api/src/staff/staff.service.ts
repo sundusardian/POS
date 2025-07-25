@@ -32,7 +32,7 @@ export class StaffService {
         createdAt: 'desc',
       },
       include: {
-        branches: true,
+        primaryBranch: true,
       },
     });
   }
@@ -42,6 +42,9 @@ export class StaffService {
       where: {
         id,
         role: Role.STAFF,
+      },
+      include: {
+        primaryBranch: true,
       },
     });
 
@@ -75,8 +78,15 @@ export class StaffService {
         name: createStaffDto.name,
         email: createStaffDto.email,
         password: hashedPassword,
-        role: Role.STAFF,
+        role: createStaffDto.role ? (Role[createStaffDto.role as keyof typeof Role] || Role.STAFF) : Role.STAFF,
         isActive: createStaffDto.isActive ?? true,
+        ...(createStaffDto.primaryBranchId ? {
+          primaryBranch: {
+            connect: {
+              id: createStaffDto.primaryBranchId,
+            },
+          },
+        } : {}),
       },
     });
   }
@@ -106,6 +116,11 @@ export class StaffService {
       name: updateStaffDto.name,
       email: updateStaffDto.email,
       isActive: updateStaffDto.isActive,
+      primaryBranch: {
+        connect: {
+          id: updateStaffDto.primaryBranchId,
+        },
+      },
     };
 
     // If password is provided, hash it

@@ -112,7 +112,7 @@ export default function StaffManagement() {
       password: "",
       role: "STAFF" as "ADMIN" | "MANAGER" | "STAFF",
       isActive: true,
-      branchId: "",
+      branchId: "none",
    })
 
    // Filter staff based on search and filters
@@ -121,7 +121,7 @@ export default function StaffManagement() {
          member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
          member.email.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesBranch =
-         selectedBranch === "all" || member.branchId === selectedBranch
+         selectedBranch === "all" || member.primaryBranchId === selectedBranch
       const matchesRole = selectedRole === "all" || member.role === selectedRole
       const matchesStatus =
          selectedStatus === "all" ||
@@ -149,7 +149,7 @@ export default function StaffManagement() {
             password: staffForm.password,
             role: staffForm.role,
             isActive: staffForm.isActive,
-            branchId: staffForm.branchId || undefined,
+            primaryBranchId: staffForm.branchId === "none" || !staffForm.branchId ? undefined : staffForm.branchId,
          })
 
          toast.success("Staff member created successfully")
@@ -159,7 +159,7 @@ export default function StaffManagement() {
             password: "",
             role: "STAFF",
             isActive: true,
-            branchId: "",
+            branchId: "none",
          })
          setIsAddStaffOpen(false)
          refetchStaff()
@@ -184,7 +184,7 @@ export default function StaffManagement() {
             email: staffForm.email,
             role: staffForm.role,
             isActive: staffForm.isActive,
-            branchId: staffForm.branchId || undefined,
+            primaryBranchId: staffForm.branchId === "none" || !staffForm.branchId ? undefined : staffForm.branchId,
          }
 
          // Only include password if it's provided
@@ -201,7 +201,7 @@ export default function StaffManagement() {
             password: "",
             role: "STAFF",
             isActive: true,
-            branchId: "",
+            branchId: "none",
          })
          setIsEditStaffOpen(false)
          setEditingStaff(null)
@@ -235,7 +235,7 @@ export default function StaffManagement() {
          password: "", // Don't pre-fill password for security
          role: member.role,
          isActive: member.isActive,
-         branchId: member.branchId || "",
+         branchId: member.primaryBranchId || "",
       })
       setIsEditStaffOpen(true)
    }
@@ -670,7 +670,7 @@ export default function StaffManagement() {
                                        </Badge>
                                     </TableCell>
                                     <TableCell>
-                                       {member.branch?.name || "No Branch"}
+                                       {member.primaryBranch?.name || 'No branch'}
                                     </TableCell>
                                     <TableCell>
                                        <Badge
@@ -807,7 +807,7 @@ export default function StaffManagement() {
                            <SelectValue placeholder="Select branch" />
                         </SelectTrigger>
                         <SelectContent>
-                           <SelectItem value="">No specific branch</SelectItem>
+                           <SelectItem value="none">No specific branch</SelectItem>
                            {branches?.map((branch) => (
                               <SelectItem key={branch.id} value={branch.id}>
                                  {branch.name}

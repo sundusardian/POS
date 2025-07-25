@@ -14,4 +14,12 @@ export class CreateStaffDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @IsString()
+  @IsOptional()
+  primaryBranchId?: string;
+
+  @IsOptional()
+  role?: string;
+
 }
