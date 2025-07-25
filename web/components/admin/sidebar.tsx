@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Package,
   Settings,
+  ShoppingCart,
   Store,
   Users,
   Utensils,
@@ -149,6 +150,13 @@ export function AdminSidebar() {
               isActive={pathname === "/admin/menu/categories"}
             />
           </SidebarGroup>
+          
+          <SidebarItem
+            href="/admin/orders"
+            icon={<ShoppingCart className="h-4 w-4" />}
+            title="Order Management"
+            isActive={pathname === "/admin/orders"}
+          />
           
           <SidebarItem
             href="/admin/staff"

@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from './auth-context';
-import { Order } from './api-client';
+import { Order, Staff, Branch } from './api-client';
 
 interface WebSocketContextType {
   socket: Socket | null;
@@ -14,6 +14,8 @@ interface WebSocketContextType {
   leaveDeskRoom: (deskId: string) => void;
   joinBranchRoom: (branchId: string) => void;
   leaveBranchRoom: (branchId: string) => void;
+  joinStaffRoom: (staffId: string) => void;
+  leaveStaffRoom: (staffId: string) => void;
 }
 
 interface WebSocketEvents {
@@ -23,6 +25,14 @@ interface WebSocketEvents {
   paymentProcessed: (data: { orderId: string; payment: any; order: Order }) => void;
   kitchenAlert: (data: { orderId: string; type: string; message: string; order: Order }) => void;
   inventoryAlert: (data: { type: string; message: string; data: any }) => void;
+  staffCreated: (staff: Staff) => void;
+  staffUpdated: (data: { staffId: string; staff: Staff }) => void;
+  staffDeleted: (data: { staffId: string; staff: Staff }) => void;
+  staffStatusChanged: (data: { staffId: string; isActive: boolean; staff: Staff }) => void;
+  branchCreated: (branch: Branch) => void;
+  branchUpdated: (data: { branchId: string; branch: Branch }) => void;
+  branchDeleted: (data: { branchId: string; branch: Branch }) => void;
+  branchStatusChanged: (data: { branchId: string; isActive: boolean; branch: Branch }) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
@@ -35,6 +45,14 @@ interface WebSocketProviderProps {
   onPaymentProcessed?: (data: { orderId: string; payment: any; order: Order }) => void;
   onKitchenAlert?: (data: { orderId: string; type: string; message: string; order: Order }) => void;
   onInventoryAlert?: (data: { type: string; message: string; data: any }) => void;
+  onStaffCreated?: (staff: Staff) => void;
+  onStaffUpdated?: (data: { staffId: string; staff: Staff }) => void;
+  onStaffDeleted?: (data: { staffId: string; staff: Staff }) => void;
+  onStaffStatusChanged?: (data: { staffId: string; isActive: boolean; staff: Staff }) => void;
+  onBranchCreated?: (branch: Branch) => void;
+  onBranchUpdated?: (data: { branchId: string; branch: Branch }) => void;
+  onBranchDeleted?: (data: { branchId: string; branch: Branch }) => void;
+  onBranchStatusChanged?: (data: { branchId: string; isActive: boolean; branch: Branch }) => void;
 }
 
 export function WebSocketProvider({ 
@@ -44,7 +62,11 @@ export function WebSocketProvider({
   onOrderCancelled,
   onPaymentProcessed,
   onKitchenAlert,
-  onInventoryAlert
+  onInventoryAlert,
+  onStaffCreated,
+  onStaffUpdated,
+  onStaffDeleted,
+  onStaffStatusChanged
 }: WebSocketProviderProps) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -127,6 +149,27 @@ export function WebSocketProvider({
       onInventoryAlert?.(data);
     });
 
+    // Staff event handlers
+    newSocket.on('staffCreated', (staff: Staff) => {
+      console.log('Staff created:', staff);
+      onStaffCreated?.(staff);
+    });
+
+    newSocket.on('staffUpdated', (data: { staffId: string; staff: Staff }) => {
+      console.log('Staff updated:', data);
+      onStaffUpdated?.(data);
+    });
+
+    newSocket.on('staffDeleted', (data: { staffId: string; staff: Staff }) => {
+      console.log('Staff deleted:', data);
+      onStaffDeleted?.(data);
+    });
+
+    newSocket.on('staffStatusChanged', (data: { staffId: string; isActive: boolean; staff: Staff }) => {
+      console.log('Staff status changed:', data);
+      onStaffStatusChanged?.(data);
+    });
+
     setSocket(newSocket);
 
     // Cleanup on unmount
@@ -171,6 +214,18 @@ export function WebSocketProvider({
     }
   };
 
+  const joinStaffRoom = (staffId: string) => {
+    if (socket && isConnected) {
+      socket.emit('joinStaffRoom', { staffId });
+    }
+  };
+
+  const leaveStaffRoom = (staffId: string) => {
+    if (socket && isConnected) {
+      socket.emit('leaveStaffRoom', { staffId });
+    }
+  };
+
   const value: WebSocketContextType = {
     socket,
     isConnected,
@@ -180,6 +235,8 @@ export function WebSocketProvider({
     leaveDeskRoom,
     joinBranchRoom,
     leaveBranchRoom,
+    joinStaffRoom,
+    leaveStaffRoom,
   };
 
   return (
@@ -225,6 +282,22 @@ export function useDeskWebSocket(deskId?: string) {
       };
     }
   }, [deskId, isConnected, joinDeskRoom, leaveDeskRoom]);
+
+  return { socket, isConnected };
+}
+
+// Custom hook for staff-specific WebSocket events
+export function useStaffWebSocket(staffId?: string) {
+  const { socket, isConnected, joinStaffRoom, leaveStaffRoom } = useWebSocket();
+
+  useEffect(() => {
+    if (staffId && isConnected) {
+      joinStaffRoom(staffId);
+      return () => {
+        leaveStaffRoom(staffId);
+      };
+    }
+  }, [staffId, isConnected, joinStaffRoom, leaveStaffRoom]);
 
   return { socket, isConnected };
 }

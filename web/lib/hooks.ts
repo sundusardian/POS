@@ -3,11 +3,12 @@ import useSWR from 'swr';
 import apiClient, { 
   ApiResponse, 
   Branch, 
-  Category,
+  Category, 
   MenuItem, 
   Desk, 
   Order,
-  User
+  User,
+  Staff
 } from './api-client';
 
 // Hook for categories
@@ -194,20 +195,57 @@ export function useOrders(branchId?: string, status?: string) {
 
 // Hook for a single order
 export function useOrder(id: string | null) {
-  const { data, error, isLoading, mutate: refetch } = useSWR<ApiResponse<Order>>(
+  const { data, error, isLoading, mutate } = useSWR(
     id ? `/orders/${id}` : null,
-    id ? () => apiClient.getOrder(id) : null,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
+    async () => {
+      if (!id) return null;
+      const response = await apiClient.getOrder(id);
+      return response.data;
     }
   );
 
   return {
-    order: data?.data || null,
+    order: data,
     isLoading,
-    error: data?.error || error,
-    refetch,
+    error,
+    refetch: mutate,
+  };
+}
+
+// Hook for staff
+export function useStaff(branchId?: string) {
+  const { data, error, isLoading, mutate } = useSWR(
+    branchId ? `/staff?branchId=${branchId}` : '/staff',
+    async () => {
+      const response = await apiClient.getStaff(branchId);
+      return response.data;
+    }
+  );
+
+  return {
+    staff: data || [],
+    isLoading,
+    error,
+    refetch: mutate,
+  };
+}
+
+// Hook for a single staff member
+export function useStaffMember(id: string | null) {
+  const { data, error, isLoading, mutate } = useSWR(
+    id ? `/staff/${id}` : null,
+    async () => {
+      if (!id) return null;
+      const response = await apiClient.getStaffMember(id);
+      return response.data;
+    }
+  );
+
+  return {
+    staffMember: data,
+    isLoading,
+    error,
+    refetch: mutate,
   };
 }
 
@@ -235,7 +273,7 @@ export function useTestData() {
   };
 }
 
-// Utility hook for mutations (create, update, delete)
+// Utility hook for order mutations (create, update, delete)
 export function useOrderMutations() {
   const createOrder = async (orderData: any) => {
     const response = await apiClient.createOrder(orderData);
@@ -256,6 +294,84 @@ export function useOrderMutations() {
     createOrder,
     updateOrderStatus,
     cancelOrder,
+  };
+}
+
+// Utility hook for desk mutations (create, update, delete)
+export function useDeskMutations() {
+  const createDesk = async (deskData: any) => {
+    const response = await apiClient.createDesk(deskData);
+    return response;
+  };
+
+  const updateDesk = async (id: string, deskData: any) => {
+    const response = await apiClient.updateDesk(id, deskData);
+    return response;
+  };
+
+  const deleteDesk = async (id: string) => {
+    const response = await apiClient.deleteDesk(id);
+    return response;
+  };
+
+  const regenerateQR = async (id: string) => {
+    const response = await apiClient.regenerateDeskQR(id);
+    return response;
+  };
+
+  return {
+    createDesk,
+    updateDesk,
+    deleteDesk,
+    regenerateQR,
+  };
+}
+
+// Utility hook for staff mutations (create, update, delete)
+export function useStaffMutations() {
+  const createStaff = async (staffData: any) => {
+    const response = await apiClient.createStaff(staffData);
+    return response;
+  };
+
+  const updateStaff = async (id: string, staffData: any) => {
+    const response = await apiClient.updateStaff(id, staffData);
+    return response;
+  };
+
+  const deleteStaff = async (id: string) => {
+    const response = await apiClient.deleteStaff(id);
+    return response;
+  };
+
+  return {
+    createStaff,
+    updateStaff,
+    deleteStaff,
+  };
+}
+
+// Utility hook for branch mutations (create, update, delete)
+export function useBranchMutations() {
+  const createBranch = async (branchData: any) => {
+    const response = await apiClient.createBranch(branchData);
+    return response;
+  };
+
+  const updateBranch = async (id: string, branchData: any) => {
+    const response = await apiClient.updateBranch(id, branchData);
+    return response;
+  };
+
+  const deleteBranch = async (id: string) => {
+    const response = await apiClient.deleteBranch(id);
+    return response;
+  };
+
+  return {
+    createBranch,
+    updateBranch,
+    deleteBranch,
   };
 }
 

@@ -1,351 +1,530 @@
+'use client';
+
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Edit, Plus, Printer, QrCode, Search, Trash2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Edit, Plus, QrCode, Search, Trash2, RefreshCw, AlertCircle, Users, CheckCircle, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from 'sonner';
+import { useDesks, useBranches, useDeskMutations } from '@/lib/hooks';
+import { Desk, CreateDeskDto, UpdateDeskDto } from '@/lib/api-client';
 
-// Mock data for desks/tables
-const DESKS = [
-  {
-    id: 1,
-    name: "Table 1",
-    capacity: 4,
-    location: "Indoor",
-    branch: "Main Branch",
-    status: "available",
-    qrCode: "https://example.com/qr/table1",
-  },
-  {
-    id: 2,
-    name: "Table 2",
-    capacity: 2,
-    location: "Indoor",
-    branch: "Main Branch",
-    status: "occupied",
-    qrCode: "https://example.com/qr/table2",
-  },
-  {
-    id: 3,
-    name: "Table 3",
-    capacity: 6,
-    location: "Outdoor",
-    branch: "Main Branch",
-    status: "available",
-    qrCode: "https://example.com/qr/table3",
-  },
-  {
-    id: 4,
-    name: "Table 4",
-    capacity: 4,
-    location: "Indoor",
-    branch: "Main Branch",
-    status: "reserved",
-    qrCode: "https://example.com/qr/table4",
-  },
-  {
-    id: 5,
-    name: "Table 5",
-    capacity: 8,
-    location: "Outdoor",
-    branch: "Main Branch",
-    status: "available",
-    qrCode: "https://example.com/qr/table5",
-  },
-  {
-    id: 6,
-    name: "Table 1",
-    capacity: 4,
-    location: "Indoor",
-    branch: "Second Branch",
-    status: "available",
-    qrCode: "https://example.com/qr/sb-table1",
-  },
-  {
-    id: 7,
-    name: "Table 2",
-    capacity: 2,
-    location: "Indoor",
-    branch: "Second Branch",
-    status: "occupied",
-    qrCode: "https://example.com/qr/sb-table2",
-  },
-  {
-    id: 8,
-    name: "VIP Room",
-    capacity: 12,
-    location: "Private",
-    branch: "Main Branch",
-    status: "available",
-    qrCode: "https://example.com/qr/vip-room",
-  },
+// Desk status configuration
+const DESK_STATUSES = [
+  { value: 'available', label: 'Available', icon: CheckCircle, color: 'bg-green-100 text-green-800' },
+  { value: 'occupied', label: 'Occupied', icon: Users, color: 'bg-red-100 text-red-800' },
+  { value: 'reserved', label: 'Reserved', icon: Users, color: 'bg-yellow-100 text-yellow-800' },
+  { value: 'maintenance', label: 'Maintenance', icon: XCircle, color: 'bg-gray-100 text-gray-800' },
 ];
 
-// Mock data for branches
-const BRANCHES = [
-  { id: 1, name: "Main Branch" },
-  { id: 2, name: "Second Branch" },
-  { id: 3, name: "Mall Branch" },
-  { id: 4, name: "Bandung Branch" },
-];
+// Get desk status from current orders (this would be enhanced with real-time data)
+const getDeskStatus = (desk: Desk) => {
+  // For now, determine status based on isActive
+  if (!desk.isActive) return 'maintenance';
+  // In a real implementation, this would check current orders
+  return 'available';
+};
 
-// Function to get status badge variant
-const getStatusVariant = (status: string) => {
-  switch (status) {
-    case "available":
-      return "success";
-    case "occupied":
-      return "destructive";
-    case "reserved":
-      return "warning";
-    default:
-      return "secondary";
-  }
+// Get status configuration
+const getStatusConfig = (status: string) => {
+  return DESK_STATUSES.find(s => s.value === status) || DESK_STATUSES[0];
 };
 
 export default function DeskManagement() {
+  // Data fetching
+  const { branches } = useBranches();
+  const { desks, isLoading: desksLoading, error: desksError, refetch: refetchDesks } = useDesks();
+  const { createDesk, updateDesk, deleteDesk, regenerateQR } = useDeskMutations();
+
+  // State management
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedBranch, setSelectedBranch] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [isAddDeskOpen, setIsAddDeskOpen] = useState(false);
+  const [isEditDeskOpen, setIsEditDeskOpen] = useState(false);
+  const [editingDesk, setEditingDesk] = useState<Desk | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Form data
+  const [deskForm, setDeskForm] = useState({
+    number: '',
+    capacity: 4,
+    isActive: true,
+    branchId: ''
+  });
+
+  // Filter desks based on search and filters
+  const filteredDesks = desks.filter(desk => {
+    const matchesSearch = desk.number.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesBranch = selectedBranch === 'all' || desk.branchId === selectedBranch;
+    const deskStatus = getDeskStatus(desk);
+    const matchesStatus = selectedStatus === 'all' || deskStatus === selectedStatus;
+    return matchesSearch && matchesBranch && matchesStatus;
+  });
+
+  // Desk CRUD handlers
+  const handleAddDesk = async () => {
+    if (!deskForm.number.trim() || !deskForm.branchId) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await createDesk({
+        number: deskForm.number,
+        capacity: deskForm.capacity,
+        isActive: deskForm.isActive,
+        branchId: deskForm.branchId
+      });
+      
+      toast.success('Desk created successfully');
+      setDeskForm({ number: '', capacity: 4, isActive: true, branchId: '' });
+      setIsAddDeskOpen(false);
+      refetchDesks();
+    } catch (error) {
+      console.error('Error creating desk:', error);
+      toast.error('Failed to create desk');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditDesk = async () => {
+    if (!editingDesk || !deskForm.number.trim()) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await updateDesk(editingDesk.id, {
+        number: deskForm.number,
+        capacity: deskForm.capacity,
+        isActive: deskForm.isActive
+      });
+      
+      toast.success('Desk updated successfully');
+      setDeskForm({ number: '', capacity: 4, isActive: true, branchId: '' });
+      setIsEditDeskOpen(false);
+      setEditingDesk(null);
+      refetchDesks();
+    } catch (error) {
+      console.error('Error updating desk:', error);
+      toast.error('Failed to update desk');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteDesk = async (desk: Desk) => {
+    if (!confirm(`Are you sure you want to delete Table ${desk.number}?`)) return;
+
+    try {
+      await deleteDesk(desk.id);
+      toast.success('Desk deleted successfully');
+      refetchDesks();
+    } catch (error) {
+      console.error('Error deleting desk:', error);
+      toast.error('Failed to delete desk');
+    }
+  };
+
+  const openEditDesk = (desk: Desk) => {
+    setEditingDesk(desk);
+    setDeskForm({
+      number: desk.number,
+      capacity: desk.capacity,
+      isActive: desk.isActive,
+      branchId: desk.branchId
+    });
+    setIsEditDeskOpen(true);
+  };
+
+  const handleRegenerateQR = async (desk: Desk) => {
+    try {
+      await regenerateQR(desk.id);
+      toast.success('QR code regenerated successfully');
+      refetchDesks();
+    } catch (error) {
+      console.error('Error regenerating QR code:', error);
+      toast.error('Failed to regenerate QR code');
+    }
+  };
+
+  const handleRefresh = () => {
+    refetchDesks();
+    toast.success('Desks refreshed');
+  };
+
+  const isLoading = desksLoading;
+  const hasError = desksError;
+
+  // Statistics
+  const totalDesks = desks.length;
+  const availableDesks = desks.filter(desk => getDeskStatus(desk) === 'available').length;
+  const occupiedDesks = desks.filter(desk => getDeskStatus(desk) === 'occupied').length;
+  const maintenanceDesks = desks.filter(desk => !desk.isActive).length;
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Desk Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Desk Management</h1>
           <p className="text-muted-foreground">
-            Manage your restaurant's tables and desks.
+            Manage restaurant tables and seating arrangements
           </p>
         </div>
-      </div>
-      
-      <Tabs defaultValue="grid" className="w-full">
-        <TabsList>
-          <TabsTrigger value="grid">Grid View</TabsTrigger>
-          <TabsTrigger value="layout">Layout View</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="grid" className="mt-4 space-y-4">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative w-full max-w-sm">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <div className="flex gap-2">
+          <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isLoading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Dialog open={isAddDeskOpen} onOpenChange={setIsAddDeskOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Desk
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Desk</DialogTitle>
+                <DialogDescription>
+                  Create a new table/desk for your restaurant.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="desk-number">Table Number *</Label>
                   <Input
-                    type="search"
-                    placeholder="Search desks..."
-                    className="pl-8"
+                    id="desk-number"
+                    value={deskForm.number}
+                    onChange={(e) => setDeskForm(prev => ({ ...prev, number: e.target.value }))}
+                    placeholder="Enter table number (e.g., 1, A1, VIP-1)"
                   />
                 </div>
-                <div className="flex gap-2">
-                  <Select defaultValue="all-branches">
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Filter by branch" />
+                <div>
+                  <Label htmlFor="desk-capacity">Capacity *</Label>
+                  <Input
+                    id="desk-capacity"
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={deskForm.capacity}
+                    onChange={(e) => setDeskForm(prev => ({ ...prev, capacity: Number(e.target.value) }))}
+                    placeholder="Enter seating capacity"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="desk-branch">Branch *</Label>
+                  <Select value={deskForm.branchId} onValueChange={(value) => setDeskForm(prev => ({ ...prev, branchId: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select branch" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all-branches">All Branches</SelectItem>
-                      {BRANCHES.map((branch) => (
-                        <SelectItem key={branch.id} value={branch.name.toLowerCase().replace(" ", "-")}>
+                      {branches?.map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id}>
                           {branch.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  
-                  <Select defaultValue="all-statuses">
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all-statuses">All Statuses</SelectItem>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="occupied">Occupied</SelectItem>
-                      <SelectItem value="reserved">Reserved</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button className="gap-1">
-                        <Plus className="h-4 w-4" /> Add Desk
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[550px]">
-                      <DialogHeader>
-                        <DialogTitle>Add New Desk</DialogTitle>
-                        <DialogDescription>
-                          Create a new desk or table for your restaurant.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="name">Desk/Table Name</Label>
-                          <Input id="name" placeholder="Enter desk name" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="grid gap-2">
-                            <Label htmlFor="capacity">Capacity</Label>
-                            <Input
-                              id="capacity"
-                              type="number"
-                              placeholder="0"
-                              min="1"
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor="branch">Branch</Label>
-                            <Select>
-                              <SelectTrigger id="branch">
-                                <SelectValue placeholder="Select branch" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {BRANCHES.map((branch) => (
-                                  <SelectItem
-                                    key={branch.id}
-                                    value={branch.name}
-                                  >
-                                    {branch.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="location">Location</Label>
-                          <Select>
-                            <SelectTrigger id="location">
-                              <SelectValue placeholder="Select location" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Indoor">Indoor</SelectItem>
-                              <SelectItem value="Outdoor">Outdoor</SelectItem>
-                              <SelectItem value="Private">Private Room</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button type="submit">Save Desk</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="desk-active"
+                    checked={deskForm.isActive}
+                    onCheckedChange={(checked) => setDeskForm(prev => ({ ...prev, isActive: checked }))}
+                  />
+                  <Label htmlFor="desk-active">Active (available for use)</Label>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {DESKS.map((desk) => (
-              <Card key={desk.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle>{desk.name}</CardTitle>
-                    <Badge
-                      variant={desk.status === "available" ? "default" : 
-                              desk.status === "occupied" ? "destructive" : "outline"}
-                    >
-                      {desk.status.charAt(0).toUpperCase() + desk.status.slice(1)}
-                    </Badge>
-                  </div>
-                  <CardDescription>{desk.branch}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Capacity:</span>
-                      <span>{desk.capacity} people</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Location:</span>
-                      <span>{desk.location}</span>
-                    </div>
-                    <div className="mt-4 flex items-center justify-between">
-                      <div className="flex gap-1">
-                        <Button variant="outline" size="sm" className="gap-1">
-                          <QrCode className="h-4 w-4" />
-                          <span>View QR</span>
-                        </Button>
-                        <Button variant="outline" size="sm" className="gap-1">
-                          <Printer className="h-4 w-4" />
-                          <span>Print</span>
-                        </Button>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Edit className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => {
+                  setIsAddDeskOpen(false);
+                  setDeskForm({ number: '', capacity: 4, isActive: true, branchId: '' });
+                }}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddDesk} disabled={isSubmitting || !deskForm.number.trim() || !deskForm.branchId}>
+                  {isSubmitting ? 'Creating...' : 'Add Desk'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* Error Display */}
+      {hasError && (
+        <Card className="border-destructive">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              <span>Error loading desks: {desksError?.message}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Statistics Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Desks</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalDesks}</div>
+            <p className="text-xs text-muted-foreground">
+              All tables in system
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Available</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{availableDesks}</div>
+            <p className="text-xs text-muted-foreground">
+              Ready for customers
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Occupied</CardTitle>
+            <Users className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{occupiedDesks}</div>
+            <p className="text-xs text-muted-foreground">
+              Currently in use
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Maintenance</CardTitle>
+            <XCircle className="h-4 w-4 text-gray-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-600">{maintenanceDesks}</div>
+            <p className="text-xs text-muted-foreground">
+              Out of service
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search and Filters */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search tables..."
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Branches</SelectItem>
+                  {branches?.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  {DESK_STATUSES.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="layout" className="mt-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Restaurant Layout</CardTitle>
-                <Select defaultValue="main-branch">
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select branch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BRANCHES.map((branch) => (
-                      <SelectItem 
-                        key={branch.id} 
-                        value={branch.name.toLowerCase().replace(" ", "-")}
-                      >
-                        {branch.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <CardDescription>
-                Drag and drop tables to arrange your restaurant layout.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[600px] w-full rounded-md border">
-                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                  Interactive restaurant layout will be displayed here
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-      
-      {/* QR Code Dialog */}
-      <Dialog>
-        <DialogContent className="sm:max-w-[400px]">
+        </CardContent>
+      </Card>
+
+      {/* Desks Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Tables ({filteredDesks.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="flex items-center justify-center p-8">
+              <RefreshCw className="h-6 w-6 animate-spin" />
+              <span className="ml-2">Loading tables...</span>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Table #</TableHead>
+                  <TableHead>Capacity</TableHead>
+                  <TableHead>Branch</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell">QR Code</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredDesks.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      {searchTerm || selectedBranch !== 'all' || selectedStatus !== 'all'
+                        ? 'No tables found matching your criteria'
+                        : 'No tables found. Create your first table to get started.'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredDesks.map((desk) => {
+                    const status = getDeskStatus(desk);
+                    const statusConfig = getStatusConfig(status);
+                    const StatusIcon = statusConfig.icon;
+                    
+                    return (
+                      <TableRow key={desk.id}>
+                        <TableCell className="font-medium">Table {desk.number}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            {desk.capacity}
+                          </div>
+                        </TableCell>
+                        <TableCell>{desk.branch?.name || 'Unknown Branch'}</TableCell>
+                        <TableCell>
+                          <Badge className={statusConfig.color}>
+                            <StatusIcon className="mr-1 h-3 w-3" />
+                            {statusConfig.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {desk.qrCode ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRegenerateQR(desk)}
+                            >
+                              <QrCode className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRegenerateQR(desk)}
+                            >
+                              Generate QR
+                            </Button>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => openEditDesk(desk)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleDeleteDesk(desk)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Edit Desk Dialog */}
+      <Dialog open={isEditDeskOpen} onOpenChange={setIsEditDeskOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Table QR Code</DialogTitle>
+            <DialogTitle>Edit Desk</DialogTitle>
             <DialogDescription>
-              Scan this QR code to access the menu for this table.
+              Update the table/desk information.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col items-center justify-center py-4">
-            <div className="h-64 w-64 rounded-md border">
-              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                QR Code Image
-              </div>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-desk-number">Table Number *</Label>
+              <Input
+                id="edit-desk-number"
+                value={deskForm.number}
+                onChange={(e) => setDeskForm(prev => ({ ...prev, number: e.target.value }))}
+                placeholder="Enter table number"
+              />
             </div>
-            <p className="mt-4 text-center text-sm text-muted-foreground">
-              This QR code links directly to the customer menu page for Table 1.
-            </p>
+            <div>
+              <Label htmlFor="edit-desk-capacity">Capacity *</Label>
+              <Input
+                id="edit-desk-capacity"
+                type="number"
+                min="1"
+                max="20"
+                value={deskForm.capacity}
+                onChange={(e) => setDeskForm(prev => ({ ...prev, capacity: Number(e.target.value) }))}
+                placeholder="Enter seating capacity"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="edit-desk-active"
+                checked={deskForm.isActive}
+                onCheckedChange={(checked) => setDeskForm(prev => ({ ...prev, isActive: checked }))}
+              />
+              <Label htmlFor="edit-desk-active">Active (available for use)</Label>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline">Download</Button>
-            <Button>Print</Button>
+            <Button variant="outline" onClick={() => {
+              setIsEditDeskOpen(false);
+              setEditingDesk(null);
+              setDeskForm({ number: '', capacity: 4, isActive: true, branchId: '' });
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditDesk} disabled={isSubmitting || !deskForm.number.trim()}>
+              {isSubmitting ? 'Updating...' : 'Update Desk'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

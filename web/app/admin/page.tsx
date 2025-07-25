@@ -4,10 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpRight, DollarSign, ShoppingBag, Users, Utensils, Wifi, WifiOff, RefreshCw, TrendingUp, Clock, CheckCircle } from "lucide-react";
+import { ArrowUpRight, DollarSign, ShoppingBag, Users, Utensils, Wifi, WifiOff, RefreshCw, TrendingUp, Clock, CheckCircle, Building2 } from "lucide-react";
 import { useAuth } from '@/lib/auth-context';
 import { useWebSocket } from '@/lib/websocket-context';
-import { useBranches, useOrders, useMenuItems, useDesks, useCategories } from '@/lib/hooks';
+import { useBranches, useOrders, useMenuItems, useDesks, useCategories, useStaff } from '@/lib/hooks';
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -29,6 +29,7 @@ export default function AdminDashboard() {
   const { menuItems, isLoading: menuLoading, error: menuError, refetch: refetchMenu } = useMenuItems();
   const { categories, isLoading: categoriesLoading, error: categoriesError, refetch: refetchCategories } = useCategories();
   const { desks, isLoading: desksLoading, refetch: refetchDesks } = useDesks();
+  const { staff, isLoading: staffLoading, error: staffError, refetch: refetchStaff } = useStaff();
   
   const [realtimeOrders, setRealtimeOrders] = useState(orders);
   const [lastUpdate, setLastUpdate] = useState(new Date());
@@ -87,12 +88,13 @@ export default function AdminDashboard() {
     refetchMenu();
     refetchCategories();
     refetchDesks();
+    refetchStaff();
     setLastUpdate(new Date());
     toast.success("Dashboard refreshed!");
   };
 
-  const isLoading = branchesLoading || ordersLoading || menuLoading || categoriesLoading || desksLoading;
-  const hasError = branchesError || ordersError || menuError || categoriesError;
+  const isLoading = branchesLoading || ordersLoading || menuLoading || categoriesLoading || desksLoading || staffLoading;
+  const hasError = branchesError || ordersError || menuError || categoriesError || staffError;
   
   return (
     <div className="flex flex-col gap-6 animate-fadeIn">
@@ -146,6 +148,7 @@ export default function AdminDashboard() {
               {ordersError && <div>Orders API: {ordersError}</div>}
               {menuError && <div>Menu API: {menuError}</div>}
               {categoriesError && <div>Categories API: {categoriesError}</div>}
+              {staffError && <div>Staff API: {staffError}</div>}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -224,6 +227,38 @@ export default function AdminDashboard() {
           <CardContent>
             <CardTitle className="text-2xl font-bold">{categories?.length || 0}</CardTitle>
             <CardDescription>Menu Categories</CardDescription>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-secondary/10 hover:border-secondary/30 transition-all duration-300 hover-lift overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-1 bg-secondary/20 group-hover:bg-secondary transition-colors duration-300"></div>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-secondary">Staff Members</CardTitle>
+            <div className="p-1.5 rounded-full bg-secondary/10 group-hover:bg-secondary/20 transition-colors duration-300">
+              <Users className="h-4 w-4 text-secondary" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{staff?.length || 0}</div>
+            <p className="text-xs text-secondary/80">
+              Active staff members
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-accent/10 hover:border-accent/30 transition-all duration-300 hover-lift overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-1 bg-accent/20 group-hover:bg-accent transition-colors duration-300"></div>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-accent">Branches</CardTitle>
+            <div className="p-1.5 rounded-full bg-accent/10 group-hover:bg-accent/20 transition-colors duration-300">
+              <Building2 className="h-4 w-4 text-accent" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{branches?.length || 0}</div>
+            <p className="text-xs text-accent/80">
+              Restaurant locations
+            </p>
           </CardContent>
         </Card>
       </div>

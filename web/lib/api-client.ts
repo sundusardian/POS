@@ -24,7 +24,10 @@ export interface Branch {
   id: string;
   name: string;
   address: string;
-  phone: string;
+  phone?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Category {
@@ -51,10 +54,14 @@ export interface Desk {
   id: string;
   number: string;
   capacity: number;
+  isActive: boolean;
+  qrCode?: string;
   branchId: string;
   branch?: {
     name: string;
   };
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface OrderItem {
@@ -87,6 +94,18 @@ export interface Order {
   payment?: any;
 }
 
+export interface Staff {
+  id: string;
+  name: string;
+  email: string;
+  role: 'ADMIN' | 'MANAGER' | 'STAFF';
+  isActive: boolean;
+  branchId?: string;
+  branch?: Branch;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // DTOs for API requests
 export interface CreateCategoryDto {
   name: string;
@@ -114,6 +133,21 @@ export interface UpdateMenuItemDto {
   categoryId?: string;
 }
 
+export interface CreateDeskDto {
+  number: string;
+  capacity?: number;
+  isActive?: boolean;
+  qrCode?: string;
+  branchId: string;
+}
+
+export interface UpdateDeskDto {
+  number?: string;
+  capacity?: number;
+  isActive?: boolean;
+  qrCode?: string;
+}
+
 export interface CreateOrderDto {
   customerName?: string;
   customerPhone?: string;
@@ -126,6 +160,38 @@ export interface CreateOrderDto {
     quantity: number;
     notes?: string;
   }[];
+}
+
+export interface CreateStaffDto {
+  name: string;
+  email: string;
+  password: string;
+  role?: 'ADMIN' | 'MANAGER' | 'STAFF';
+  isActive?: boolean;
+  branchId?: string;
+}
+
+export interface UpdateStaffDto {
+  name?: string;
+  email?: string;
+  password?: string;
+  role?: 'ADMIN' | 'MANAGER' | 'STAFF';
+  isActive?: boolean;
+  branchId?: string;
+}
+
+export interface CreateBranchDto {
+  name: string;
+  address: string;
+  phone?: string;
+  isActive?: boolean;
+}
+
+export interface UpdateBranchDto {
+  name?: string;
+  address?: string;
+  phone?: string;
+  isActive?: boolean;
 }
 
 class ApiClient {
@@ -224,6 +290,26 @@ class ApiClient {
     return this.request<Branch>(`/branches/${id}`);
   }
 
+  async createBranch(branchData: CreateBranchDto): Promise<ApiResponse<Branch>> {
+    return this.request<Branch>('/branches', {
+      method: 'POST',
+      body: JSON.stringify(branchData),
+    });
+  }
+
+  async updateBranch(id: string, branchData: UpdateBranchDto): Promise<ApiResponse<Branch>> {
+    return this.request<Branch>(`/branches/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(branchData),
+    });
+  }
+
+  async deleteBranch(id: string): Promise<ApiResponse<void>> {
+    return this.request<void>(`/branches/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Categories
   async getCategories(): Promise<ApiResponse<Category[]>> {
     return this.request<Category[]>('/categories');
@@ -293,6 +379,32 @@ class ApiClient {
     return this.request<Desk>(`/desks/${id}`);
   }
 
+  async createDesk(deskData: CreateDeskDto): Promise<ApiResponse<Desk>> {
+    return this.request<Desk>('/desks', {
+      method: 'POST',
+      body: JSON.stringify(deskData),
+    });
+  }
+
+  async updateDesk(id: string, deskData: UpdateDeskDto): Promise<ApiResponse<Desk>> {
+    return this.request<Desk>(`/desks/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(deskData),
+    });
+  }
+
+  async deleteDesk(id: string): Promise<ApiResponse<void>> {
+    return this.request<void>(`/desks/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async regenerateDeskQR(id: string): Promise<ApiResponse<Desk>> {
+    return this.request<Desk>(`/desks/${id}/regenerate-qr`, {
+      method: 'POST',
+    });
+  }
+
   // Orders
   async getOrders(branchId?: string, status?: string): Promise<ApiResponse<Order[]>> {
     const params = new URLSearchParams();
@@ -324,6 +436,39 @@ class ApiClient {
   async cancelOrder(id: string): Promise<ApiResponse<Order>> {
     return this.request<Order>(`/orders/${id}/cancel`, {
       method: 'POST',
+    });
+  }
+
+  // Staff
+  async getStaff(branchId?: string): Promise<ApiResponse<Staff[]>> {
+    const params = new URLSearchParams();
+    if (branchId) params.append('branchId', branchId);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    
+    return this.request<Staff[]>(`/staff${query}`);
+  }
+
+  async getStaffMember(id: string): Promise<ApiResponse<Staff>> {
+    return this.request<Staff>(`/staff/${id}`);
+  }
+
+  async createStaff(staffData: CreateStaffDto): Promise<ApiResponse<Staff>> {
+    return this.request<Staff>('/staff', {
+      method: 'POST',
+      body: JSON.stringify(staffData),
+    });
+  }
+
+  async updateStaff(id: string, staffData: UpdateStaffDto): Promise<ApiResponse<Staff>> {
+    return this.request<Staff>(`/staff/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(staffData),
+    });
+  }
+
+  async deleteStaff(id: string): Promise<ApiResponse<void>> {
+    return this.request<void>(`/staff/${id}`, {
+      method: 'DELETE',
     });
   }
 

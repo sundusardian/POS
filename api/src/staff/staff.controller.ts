@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  HttpCode,
+  HttpStatus,
+  Request,
+} from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { Role } from '../auth/enums/role.enum';
@@ -12,8 +23,12 @@ export class StaffController {
 
   @Roles(Role.ADMIN, Role.MANAGER)
   @Get()
-  async findAll() {
-    return this.staffService.findAll();
+  async findAll(@Request() request: any) {
+    // Get staff members based on role access level
+    const user = request.user;
+    console.log("user", user);
+      
+    return this.staffService.findAll(user.role);
   }
 
   @Roles(Role.ADMIN, Role.MANAGER)
@@ -30,7 +45,10 @@ export class StaffController {
 
   @Roles(Role.ADMIN, Role.MANAGER)
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateStaffDto: UpdateStaffDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateStaffDto: UpdateStaffDto,
+  ) {
     return this.staffService.update(id, updateStaffDto);
   }
 
