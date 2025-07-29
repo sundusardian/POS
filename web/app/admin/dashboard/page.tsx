@@ -1,14 +1,42 @@
 "use client";
 
+// UI Components
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpRight, DollarSign, ShoppingBag, Users, Utensils, Wifi, WifiOff, RefreshCw } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+// Icons
+import { 
+  ArrowUpRight, 
+  DollarSign, 
+  ShoppingBag, 
+  Users, 
+  Utensils, 
+  Wifi, 
+  WifiOff, 
+  RefreshCw, 
+  Bell, 
+  AlertTriangle 
+} from "lucide-react";
+
+// Hooks and Contexts
 import { useAuth } from "@/lib/auth-context";
-import { useWebSocket } from "@/lib/websocket-context";
-import { useBranches, useOrders, useMenuItems, useTestData } from "@/lib/hooks";
-import { useState, useEffect } from "react";
+import { useBaseWebSocket } from "@/lib/websocket";
+import { useBranches, useOrders, useMenuItems, useTestData, useStaff } from "@/lib/hooks";
+import { 
+  useDashboardMetrics, 
+  useRealtimeOrders, 
+  useInventoryAlerts, 
+  useStaffActivity, 
+  useBranchPerformance 
+} from "@/lib/websocket-hooks";
+
+// Type Adapters
+import { adaptOrdersToWebSocketType } from "@/lib/type-adapters";
+
+// Utilities
 import { toast } from "sonner";
 
 // Format currency to IDR
@@ -22,66 +50,34 @@ const formatCurrency = (amount: number) => {
 
 export default function IntegratedDashboard() {
   const { user } = useAuth();
-  const { isConnected } = useWebSocket();
   const { branches, isLoading: branchesLoading, error: branchesError, refetch: refetchBranches } = useBranches();
   const { orders, isLoading: ordersLoading, error: ordersError, refetch: refetchOrders } = useOrders();
   const { menuItems, isLoading: menuLoading, error: menuError, refetch: refetchMenu } = useMenuItems();
   const { testData, isLoading: testLoading, refetch: refetchTestData } = useTestData();
+  const { staff, isLoading: staffLoading } = useStaff();
   
-  const [realtimeOrders, setRealtimeOrders] = useState(orders);
+  // Use our new WebSocket hooks for real-time data
+  const { isConnected } = useBaseWebSocket();
+  const { metrics, isLoading: metricsLoading } = useDashboardMetrics();
+  
+  // Use type adapter to fix type incompatibility
+  const adaptedOrders = adaptOrdersToWebSocketType(orders);
+  const { orders: realtimeOrders } = useRealtimeOrders(adaptedOrders);
+  
+  const { alerts, lowStockItems } = useInventoryAlerts();
+  const { activities } = useStaffActivity(staff);
+  const { performance } = useBranchPerformance(branches);
 
-  // Update realtime orders when orders data changes
-  useEffect(() => {
-    setRealtimeOrders(orders);
-  }, [orders]);
-
-  // Handle WebSocket events
-  useEffect(() => {
-    const handleOrderCreated = (order: any) => {
-      setRealtimeOrders(prev => [order, ...prev]);
-      toast.success(`New order #${order.id} created!`);
-    };
-
-    const handleOrderStatusChanged = (data: any) => {
-      setRealtimeOrders(prev => 
-        prev.map(order => 
-          order.id === data.orderId 
-            ? { ...order, status: data.status }
-            : order
-        )
-      );
-      toast.info(`Order #${data.orderId} status changed to ${data.status}`);
-    };
-
-    const handleOrderCancelled = (data: any) => {
-      setRealtimeOrders(prev => 
-        prev.map(order => 
-          order.id === data.orderId 
-            ? { ...order, status: 'CANCELLED' }
-            : order
-        )
-      );
-      toast.error(`Order #${data.orderId} was cancelled`);
-    };
-
-    // Note: In a real implementation, you'd add these event listeners to the WebSocket
-    // For now, we'll just set up the handlers
-    
-    return () => {
-      // Cleanup event listeners
-    };
-  }, []);
-
-  // Calculate stats
-  const totalRevenue = realtimeOrders
+  // Calculate stats (use metrics from WebSocket if available, otherwise calculate from orders)
+  const totalRevenue = metrics.totalRevenue || realtimeOrders
     .filter(order => order.status === 'COMPLETED')
     .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
 
-  const activeOrders = realtimeOrders.filter(order => 
+  const activeOrders = metrics.activeOrders || realtimeOrders.filter(order => 
     ['PENDING', 'CONFIRMED', 'PREPARING', 'READY'].includes(order.status)
   ).length;
 
-  const completedToday = realtimeOrders.filter(order => {
+  const completedToday = metrics.completedOrders || realtimeOrders.filter(order => {
     const today = new Date().toDateString();
     const orderDate = new Date(order.createdAt).toDateString();
     return orderDate === today && order.status === 'COMPLETED';
@@ -95,7 +91,7 @@ export default function IntegratedDashboard() {
     toast.success("Data refreshed!");
   };
 
-  const isLoading = branchesLoading || ordersLoading || menuLoading;
+  const isLoading = branchesLoading || ordersLoading || menuLoading || metricsLoading || staffLoading;
   const hasErrors = branchesError || ordersError || menuError;
 
   return (
@@ -207,9 +203,11 @@ export default function IntegratedDashboard() {
       </div>
 
       <Tabs defaultValue="orders" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="orders">Recent Orders</TabsTrigger>
           <TabsTrigger value="branches">Branches</TabsTrigger>
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
+          <TabsTrigger value="staff">Staff</TabsTrigger>
           <TabsTrigger value="menu">Menu Items</TabsTrigger>
           <TabsTrigger value="test">Test Data</TabsTrigger>
         </TabsList>
@@ -263,13 +261,145 @@ export default function IntegratedDashboard() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2">
-                {branches.map((branch) => (
-                  <div key={branch.id} className="p-4 border rounded-lg">
-                    <h3 className="font-medium">{branch.name}</h3>
-                    <p className="text-sm text-muted-foreground">{branch.address}</p>
-                    <p className="text-sm text-muted-foreground">{branch.phone}</p>
+                {branches.map((branch) => {
+                  // Find branch performance data if available
+                  const branchPerf = performance.find(p => p.branchId === branch.id);
+                  
+                  return (
+                    <div key={branch.id} className="p-4 border rounded-lg hover:border-primary/30 transition-all">
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-medium">{branch.name}</h3>
+                        <Badge variant={branch.isActive ? "default" : "secondary"}>
+                          {branch.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{branch.address}</p>
+                      <p className="text-sm text-muted-foreground">{branch.phone}</p>
+                      
+                      {branchPerf && (
+                        <div className="mt-3 pt-3 border-t">
+                          <div className="flex justify-between text-sm">
+                            <span>Orders today:</span>
+                            <span className="font-medium">{branchPerf.orders}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Revenue:</span>
+                            <span className="font-medium text-green-600">{formatCurrency(branchPerf.revenue)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="inventory" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  Inventory Alerts
+                </CardTitle>
+                <CardDescription>Real-time inventory status alerts</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {alerts.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No alerts at this time</p>
+                ) : (
+                  <div className="space-y-3">
+                    {alerts.map((alert, index) => (
+                      <div key={index} className="p-3 border rounded-lg bg-amber-50 border-amber-200">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="font-medium text-amber-800">{alert.type}</div>
+                            <div className="text-sm text-amber-700">{alert.message}</div>
+                          </div>
+                          <div className="text-xs text-amber-600">
+                            {new Date(alert.timestamp).toLocaleTimeString()}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-5 w-5 text-red-500" />
+                  Low Stock Items
+                </CardTitle>
+                <CardDescription>Items that need to be restocked</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {lowStockItems.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">All stock levels are normal</p>
+                ) : (
+                  <div className="space-y-3">
+                    {lowStockItems.map((item, index) => (
+                      <div key={index} className="p-3 border rounded-lg bg-red-50 border-red-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-red-800">{item.name || `Ingredient #${item.ingredientId}`}</div>
+                            <div className="text-sm text-red-700">Quantity: {item.quantity}</div>
+                          </div>
+                          <Badge variant="destructive">{item.status.toUpperCase()}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="staff" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-500" />
+                Staff Activity
+              </CardTitle>
+              <CardDescription>Real-time staff activity monitoring</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {activities.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No recent staff activity</p>
+                ) : (
+                  <div className="space-y-3">
+                    {activities.map((activity, index) => (
+                      <div key={index} className="p-3 border rounded-lg hover:bg-slate-50">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarFallback>{activity.staffName?.substring(0, 2) || 'ST'}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium">{activity.staffName || `Staff #${activity.staffId}`}</div>
+                              <div className="text-sm text-muted-foreground">{activity.activity}</div>
+                            </div>
+                          </div>
+                          <div>
+                            <Badge variant="secondary">
+                              {activity.activity.includes('login') ? 'Online' : 'Active'}
+                            </Badge>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {new Date(activity.timestamp).toLocaleTimeString()}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -279,17 +409,15 @@ export default function IntegratedDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Menu Items ({menuItems.length})</CardTitle>
-              <CardDescription>Available menu items</CardDescription>
+              <CardDescription>All available menu items</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {menuItems.slice(0, 12).map((item) => (
+                {menuItems.map((item) => (
                   <div key={item.id} className="p-4 border rounded-lg">
                     <h3 className="font-medium">{item.name}</h3>
-                    <p className="text-sm text-muted-foreground">{item.category?.name}</p>
-                    <p className="text-sm font-medium text-primary mt-2">
-                      {formatCurrency(item.price)}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                    <p className="mt-2 font-medium">{formatCurrency(item.price)}</p>
                   </div>
                 ))}
               </div>

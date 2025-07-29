@@ -18,6 +18,18 @@ interface WebSocketContextType {
   leaveStaffRoom: (staffId: string) => void;
 }
 
+interface DashboardMetrics {
+  totalOrders: number;
+  activeOrders: number;
+  completedOrders: number;
+  totalRevenue: number;
+  averageOrderValue: number;
+  topSellingItems: Array<{ id: string; name: string; quantity: number }>;
+  lowStockItems: Array<{ id: string; name: string; quantity: number; minQuantity: number }>;
+  activeStaff: number;
+  branchPerformance: Array<{ branchId: string; name: string; orders: number; revenue: number }>;
+}
+
 interface WebSocketEvents {
   orderCreated: (order: Order) => void;
   orderStatusChanged: (data: { orderId: string; status: string; order: Order }) => void;
@@ -33,6 +45,11 @@ interface WebSocketEvents {
   branchUpdated: (data: { branchId: string; branch: Branch }) => void;
   branchDeleted: (data: { branchId: string; branch: Branch }) => void;
   branchStatusChanged: (data: { branchId: string; isActive: boolean; branch: Branch }) => void;
+  // Dashboard-specific events
+  dashboardMetricsUpdate: (metrics: DashboardMetrics) => void;
+  realtimeStatsUpdate: (data: { type: string; value: number; timestamp: string }) => void;
+  inventoryLevelUpdate: (data: { ingredientId: string; quantity: number; status: 'low' | 'normal' | 'high' }) => void;
+  staffActivityUpdate: (data: { staffId: string; activity: string; timestamp: string }) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
