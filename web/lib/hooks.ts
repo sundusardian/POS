@@ -33,8 +33,10 @@ import apiClient, {
   CreateSupplierDto,
   UpdateSupplierDto,
   CreateSupplierIngredientDto,
-  UpdateSupplierIngredientDto
+  UpdateSupplierIngredientDto,
+  PurchaseOrder
 } from './api-client';
+import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto } from './api';
 
 // Hook for categories
 export function useCategories() {
@@ -763,7 +765,7 @@ export function usePurchaseOrders(supplierId?: string, branchId?: string, status
       const queryString = params.toString();
       return `/purchase-orders${queryString ? `?${queryString}` : ''}`;
     },
-    apiClient.fetcher
+    apiClient.getPurchaseOrders
   );
 
   return {
@@ -778,7 +780,7 @@ export function usePurchaseOrders(supplierId?: string, branchId?: string, status
 export function usePurchaseOrder(id: string | null) {
   const { data, error, isLoading, mutate } = useSWR<ApiResponse<PurchaseOrder>>(
     id ? `/purchase-orders/${id}` : null,
-    apiClient.fetcher
+    apiClient.getPurchaseOrder
   );
 
   return {
