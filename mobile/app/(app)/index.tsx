@@ -42,6 +42,10 @@ export default function HomeScreen() {
     router.push('./api-test');
   };
 
+  const navigateToOrders = () => {
+    router.push('./orders');
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -84,6 +88,23 @@ export default function HomeScreen() {
               onPress={navigateToSettings}
             >
               <Text style={styles.cardButtonText}>Open Settings</Text>
+              <Ionicons name="chevron-forward" size={16} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Order Management</Text>
+              <Ionicons name="receipt" size={24} color="#007AFF" />
+            </View>
+            <Text style={styles.cardText}>
+              View, create, and manage orders. Track order status and customer information.
+            </Text>
+            <TouchableOpacity 
+              style={styles.cardButton}
+              onPress={navigateToOrders}
+            >
+              <Text style={styles.cardButtonText}>Manage Orders</Text>
               <Ionicons name="chevron-forward" size={16} color="#007AFF" />
             </TouchableOpacity>
           </View>

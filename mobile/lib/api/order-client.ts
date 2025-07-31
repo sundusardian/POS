@@ -14,13 +14,23 @@ export interface CreateOrderDto {
   branchId: string;
   deskId?: string;
   items: CreateOrderItemDto[];
+  isDraft?: boolean;
+}
+
+export interface CreateDraftOrderDto {
+  customerName?: string;
+  customerPhone?: string;
+  branchId: string;
+  deskId?: string;
+  items: CreateOrderItemDto[];
 }
 
 export interface UpdateOrderDto {
-  status?: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'SERVED' | 'COMPLETED' | 'CANCELLED';
+  status?: 'DRAFT' | 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'SERVED' | 'COMPLETED' | 'CANCELLED';
   customerName?: string;
   customerPhone?: string;
   deskId?: string;
+  queueNumber?: number;
 }
 
 export interface OrderFilters {
@@ -65,6 +75,48 @@ export class OrderApiClient extends BaseApiClient {
   async deleteOrder(id: string): Promise<{ message: string }> {
     return this.request<{ message: string }>(`/orders/${id}`, {
       method: 'DELETE',
+    });
+  }
+
+  // Draft order methods
+  async createDraftOrder(data: CreateDraftOrderDto): Promise<Order> {
+    return this.request<Order>('/orders/draft', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getDraftOrders(branchId?: string): Promise<Order[]> {
+    const params = new URLSearchParams();
+    if (branchId) params.append('branchId', branchId);
+    params.append('status', 'DRAFT');
+    const queryString = params.toString();
+    return this.request<Order[]>(`/orders${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async convertDraftToOrder(id: string): Promise<Order> {
+    return this.request<Order>(`/orders/${id}/convert`, {
+      method: 'POST',
+    });
+  }
+
+  // Print receipt placeholder
+  async printReceipt(orderId: string): Promise<{ success: boolean; message: string }> {
+    // Placeholder function for printing receipt
+    console.log(`Printing receipt for order: ${orderId}`);
+    
+    // In a real implementation, this would:
+    // 1. Format the order data for printing
+    // 2. Send to thermal printer via native module
+    // 3. Handle printer errors and status
+    
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: 'Receipt printed successfully'
+        });
+      }, 1000); // Simulate printing delay
     });
   }
 

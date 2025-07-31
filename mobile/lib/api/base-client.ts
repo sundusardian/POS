@@ -3,9 +3,13 @@ import { Platform } from 'react-native';
 import { getStoredToken } from './token-manager';
 
 // API base URL - adjust this to match your backend
+// Use environment variables or default to localhost
+const API_URL = process.env.API_URL || 'http://localhost:3001/api';
+const API_URL_ANDROID = process.env.API_URL_ANDROID || 'https://0smkq7sj-3001.asse.devtunnels.ms/api';
+
 export const API_BASE_URL = Platform.OS === 'web' 
-  ? 'http://localhost:3001/api' 
-  : 'http://10.0.2.2:3001/api'; // Android emulator localhost
+  ? API_URL 
+  : API_URL_ANDROID; // Android emulator localhost
 
 // Base API client class with core functionality
 export class BaseApiClient {
@@ -22,8 +26,11 @@ export class BaseApiClient {
     };
     
     if (token) {
-      headers.Authorization = `Bearer ${token}`;
+      headers.Authorization = `Bearer ${JSON.parse(token)}`;
     }
+
+    console.log('Headers:', headers);
+    
     
     return headers;
   }

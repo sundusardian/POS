@@ -31,7 +31,7 @@ export interface ForgotPasswordDto {
 
 export interface AuthResponse {
   user: User;
-  access_token: string;
+  accessToken: string;
 }
 
 // Branch interface
@@ -75,14 +75,16 @@ export interface OrderItem {
 export interface Order {
   id: string;
   orderNumber: string;
-  status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'SERVED' | 'COMPLETED' | 'CANCELLED';
+  queueNumber?: number;
+  status: 'DRAFT' | 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'SERVED' | 'COMPLETED' | 'CANCELLED';
   customerName?: string;
   customerPhone?: string;
   branchId: string;
   branch?: Branch;
   deskId?: string;
-  items: OrderItem[];
+  orderItems: OrderItem[];
   totalAmount: number;
+  isDraft?: boolean;
   createdAt: string;
   updatedAt: string;
 }

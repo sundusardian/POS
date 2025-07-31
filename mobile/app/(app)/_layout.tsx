@@ -6,7 +6,7 @@ import { View, Text } from 'react-native';
 export default function AppLayout() {
   const { user } = useAuthStore();
 
-  const { isLoading, token, initialize } = useAuthStore();
+  const { isLoading } = useAuthStore();
   
   // Initialize auth state on mount
   useEffect(() => {
@@ -31,6 +31,7 @@ export default function AppLayout() {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
+        headerShown: false,
       }}
     >
       <Stack.Screen 
@@ -50,6 +51,18 @@ export default function AppLayout() {
         name="settings" 
         options={{ 
           title: 'Settings',
+        }} 
+      />
+      <Stack.Screen 
+        name="orders" 
+        options={{ 
+          title: 'Orders',
+        }} 
+      />
+      <Stack.Screen 
+        name="create-order" 
+        options={{ 
+          title: 'Create Order',
         }} 
       />
       <Stack.Screen 

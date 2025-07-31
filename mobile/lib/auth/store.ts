@@ -66,13 +66,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       // Make real API call to backend
       const response = await apiClient.auth.login({ email, password });
-      
+      console.log('Login response:', response.accessToken);
       // Store token securely
-      await storeToken(response.access_token);
+      await storeToken(JSON.stringify(response.accessToken));
       
       // Update auth state with user data and token
       set({
-        token: response.access_token,
+        token: response.accessToken,
         user: response.user,
         isLoading: false,
       });
@@ -91,11 +91,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const response = await apiClient.auth.register({ email, password, name });
       
       // Store token securely
-      await storeToken(response.access_token);
+      await storeToken(JSON.stringify(response.accessToken));
       
       // Update auth state with user data and token
       set({
-        token: response.access_token,
+        token: response.accessToken,
         user: response.user,
         isLoading: false,
       });
