@@ -38,6 +38,10 @@ export default function HomeScreen() {
     router.push('/(app)/settings');
   };
 
+  const navigateToApiTest = () => {
+    router.push('./api-test');
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -80,6 +84,23 @@ export default function HomeScreen() {
               onPress={navigateToSettings}
             >
               <Text style={styles.cardButtonText}>Open Settings</Text>
+              <Ionicons name="chevron-forward" size={16} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>API Integration</Text>
+              <Ionicons name="cloud" size={24} color="#007AFF" />
+            </View>
+            <Text style={styles.cardText}>
+              Test the connection to the backend API and validate authentication.
+            </Text>
+            <TouchableOpacity 
+              style={styles.cardButton}
+              onPress={navigateToApiTest}
+            >
+              <Text style={styles.cardButtonText}>Test API</Text>
               <Ionicons name="chevron-forward" size={16} color="#007AFF" />
             </TouchableOpacity>
           </View>

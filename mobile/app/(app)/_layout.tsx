@@ -52,6 +52,12 @@ export default function AppLayout() {
           title: 'Settings',
         }} 
       />
+      <Stack.Screen 
+        name="api-test" 
+        options={{ 
+          title: 'API Test',
+        }} 
+      />
     </Stack>
   );
 }

@@ -1,0 +1,165 @@
+// API client for React Native mobile app
+import { Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+
+// API base URL - adjust this to match your backend
+const API_BASE_URL = Platform.OS === 'web' 
+  ? 'http://localhost:3001/api' 
+  : 'http://10.0.2.2:3001/api'; // Android emulator localhost
+
+// User interface
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  primaryBranchId?: string;
+  primaryBranch?: {
+    id: string;
+    name: string;
+  };
+}
+
+// Auth DTOs
+export interface LoginDto {
+  email: string;
+  password: string;
+}
+
+export interface RegisterDto {
+  email: string;
+  password: string;
+  name: string;
+}
+
+export interface ForgotPasswordDto {
+  email: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  access_token: string;
+}
+
+// Helper function to get stored token
+async function getStoredToken(): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    return localStorage.getItem('auth_token');
+  } else {
+    return await SecureStore.getItemAsync('auth_token');
+  }
+}
+
+// Helper function to store token
+export async function storeToken(token: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    localStorage.setItem('auth_token', token);
+  } else {
+    await SecureStore.setItemAsync('auth_token', token);
+  }
+}
+
+// Helper function to remove token
+export async function removeStoredToken(): Promise<void> {
+  if (Platform.OS === 'web') {
+    localStorage.removeItem('auth_token');
+  } else {
+    await SecureStore.deleteItemAsync('auth_token');
+  }
+}
+
+// API client class
+class ApiClient {
+  private baseURL: string;
+
+  constructor(baseURL: string) {
+    this.baseURL = baseURL;
+  }
+
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    const token = await getStoredToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    
+    return headers;
+  }
+
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+    const headers = await this.getAuthHeaders();
+
+    const config: RequestInit = {
+      headers,
+      ...options,
+    };
+
+    console.log(`API Request: ${config.method || 'GET'} ${url}`);
+
+    try {
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log(`API Response: ${config.method || 'GET'} ${url} - Success`);
+      return data;
+    } catch (error) {
+      console.error(`API Error: ${config.method || 'GET'} ${url}`, error);
+      throw error;
+    }
+  }
+
+  // Authentication endpoints
+  async login(credentials: LoginDto): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    });
+  }
+
+  async register(userData: RegisterDto): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  async forgotPassword(data: ForgotPasswordDto): Promise<{ message: string }> {
+    return this.request<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async validateToken(): Promise<User> {
+    return this.request<User>('/auth/profile');
+  }
+
+  async refreshToken(): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/refresh', {
+      method: 'POST',
+    });
+  }
+
+  // Test connection
+  async testConnection(): Promise<{ message: string; timestamp: string }> {
+    return this.request<{ message: string; timestamp: string }>('/test');
+  }
+}
+
+// Create and export API client instance
+export const apiClient = new ApiClient(API_BASE_URL);
+
+// Export helper functions
+export { getStoredToken };
