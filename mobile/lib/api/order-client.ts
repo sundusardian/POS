@@ -101,14 +101,22 @@ export class OrderApiClient extends BaseApiClient {
   }
 
   // Print receipt placeholder
-  async printReceipt(orderId: string): Promise<{ success: boolean; message: string }> {
+  async printReceipt(
+    orderId: string, 
+    paymentData?: {
+      paymentMethod: 'cash' | 'cashless';
+      receivedAmount?: number;
+      changeAmount?: number;
+    }
+  ): Promise<{ success: boolean; message: string }> {
     // Placeholder function for printing receipt
-    console.log(`Printing receipt for order: ${orderId}`);
+    console.log(`Printing receipt for order: ${orderId}`, paymentData);
     
     // In a real implementation, this would:
     // 1. Format the order data for printing
-    // 2. Send to thermal printer via native module
-    // 3. Handle printer errors and status
+    // 2. Include payment information (method, amounts)
+    // 3. Send to thermal printer via native module
+    // 4. Handle printer errors and status
     
     return new Promise((resolve) => {
       setTimeout(() => {

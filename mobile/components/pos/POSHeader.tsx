@@ -6,9 +6,10 @@ interface POSHeaderProps {
    onBack: () => void
    cartItemCount: number
    onCartPress: () => void
+   onDraftOrdersPress: () => void
 }
 
-export default function POSHeader({ onBack, cartItemCount, onCartPress }: POSHeaderProps) {
+export default function POSHeader({ onBack, cartItemCount, onCartPress, onDraftOrdersPress }: POSHeaderProps) {
    return (
       <View style={styles.header}>
          <TouchableOpacity style={styles.backButton} onPress={onBack}>
@@ -17,14 +18,20 @@ export default function POSHeader({ onBack, cartItemCount, onCartPress }: POSHea
          
          <Text style={styles.title}>POS - Create Order</Text>
          
-         <TouchableOpacity style={styles.cartButton} onPress={onCartPress}>
-            <Ionicons name="cart" size={24} color="#007AFF" />
-            {cartItemCount > 0 && (
-               <View style={styles.cartBadge}>
-                  <Text style={styles.cartBadgeText}>{cartItemCount}</Text>
-               </View>
-            )}
-         </TouchableOpacity>
+         <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.draftButton} onPress={onDraftOrdersPress}>
+               <Ionicons name="document-text" size={20} color="#666" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.cartButton} onPress={onCartPress}>
+               <Ionicons name="cart" size={24} color="#007AFF" />
+               {cartItemCount > 0 && (
+                  <View style={styles.cartBadge}>
+                     <Text style={styles.cartBadgeText}>{cartItemCount}</Text>
+                  </View>
+               )}
+            </TouchableOpacity>
+         </View>
       </View>
    )
 }
@@ -54,6 +61,14 @@ const styles = StyleSheet.create({
       color: '#333',
       flex: 1,
       textAlign: 'center',
+   },
+   headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+   },
+   draftButton: {
+      padding: 8,
    },
    cartButton: {
       padding: 8,

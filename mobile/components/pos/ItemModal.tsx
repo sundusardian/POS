@@ -9,22 +9,19 @@ import {
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { MenuItem } from '../../lib/api/types'
-import { CartItem } from '../../app/(app)/create-order'
 
 interface ItemModalProps {
    visible: boolean
-   menuItem: MenuItem | null
+   item: MenuItem | null
    onClose: () => void
-   onAddToCart: (item: CartItem) => void
-   formatPrice: (amount: number) => string
+   onAddToCart: (item: MenuItem, quantity: number, notes?: string) => void
 }
 
 export default function ItemModal({
    visible,
-   menuItem,
+   item,
    onClose,
    onAddToCart,
-   formatPrice,
 }: ItemModalProps) {
    const [quantity, setQuantity] = useState(1)
    const [notes, setNotes] = useState('')
@@ -36,35 +33,37 @@ export default function ItemModal({
       }
    }, [visible])
 
+   const formatPrice = (price: number) => {
+      return new Intl.NumberFormat('id-ID', {
+         style: 'currency',
+         currency: 'IDR',
+         minimumFractionDigits: 0,
+      }).format(price)
+   }
+
    const handleAddToCart = () => {
-      if (!menuItem) return
+      if (!item) return
 
-      const cartItem: CartItem = {
-         menuItem,
-         quantity,
-         notes: notes.trim() || undefined,
-      }
-
-      onAddToCart(cartItem)
+      onAddToCart(item, quantity, notes.trim() || undefined)
       onClose()
    }
 
-   if (!menuItem) return null
+   if (!item) return null
 
    return (
       <Modal visible={visible} animationType="slide" transparent={true}>
          <View style={styles.overlay}>
             <View style={styles.modal}>
                <View style={styles.header}>
-                  <Text style={styles.title}>{menuItem.name}</Text>
+                  <Text style={styles.title}>{item.name}</Text>
                   <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                      <Ionicons name="close" size={24} color="#333" />
                   </TouchableOpacity>
                </View>
 
                <View style={styles.content}>
-                  <Text style={styles.description}>{menuItem.description}</Text>
-                  <Text style={styles.price}>{formatPrice(menuItem.price)}</Text>
+                  <Text style={styles.description}>{item.description || 'No description available'}</Text>
+                  <Text style={styles.price}>{formatPrice(item.price)}</Text>
 
                   <View style={styles.quantitySection}>
                      <Text style={styles.sectionLabel}>Quantity:</Text>
@@ -104,7 +103,7 @@ export default function ItemModal({
                <View style={styles.footer}>
                   <TouchableOpacity style={styles.addButton} onPress={handleAddToCart}>
                      <Text style={styles.addButtonText}>
-                        Add to Cart - {formatPrice(menuItem.price * quantity)}
+                        Add to Cart - {formatPrice(item.price * quantity)}
                      </Text>
                   </TouchableOpacity>
                </View>

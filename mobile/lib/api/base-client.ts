@@ -4,8 +4,8 @@ import { getStoredToken } from './token-manager';
 
 // API base URL - adjust this to match your backend
 // Use environment variables or default to localhost
-const API_URL = process.env.API_URL || 'http://localhost:3001/api';
-const API_URL_ANDROID = process.env.API_URL_ANDROID || 'https://0smkq7sj-3001.asse.devtunnels.ms/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_URL_ANDROID = process.env.EXPO_PUBLIC_API_URL_ANDROID || 'https://0smkq7sj-3001.asse.devtunnels.ms/api';
 
 export const API_BASE_URL = Platform.OS === 'web' 
   ? API_URL 

@@ -13,6 +13,9 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { Branch } from '../../lib/api/types'
 import { CartItem } from '../../app/(app)/create-order'
+import { DraftOrderStorage } from '../../lib/storage/draft-storage'
+import PaymentModal from './PaymentModal'
+import BranchModal from './BranchModal'
 
 interface CheckoutModalProps {
    visible: boolean
@@ -27,12 +30,9 @@ interface CheckoutModalProps {
       customerPhone?: string
       branchId: string
       deskNumber?: string
-   }, isDraft?: boolean) => void
-   onSaveDraft?: (orderData: {
-      customerName: string
-      customerPhone?: string
-      branchId: string
-      deskNumber?: string
+      paymentMethod?: 'cash' | 'cashless'
+      receivedAmount?: number
+      changeAmount?: number
    }) => void
    formatPrice: (amount: number) => string
 }
@@ -46,13 +46,14 @@ export default function CheckoutModal({
    isSubmitting,
    onClose,
    onSubmit,
-   onSaveDraft,
    formatPrice,
 }: CheckoutModalProps) {
    const [customerName, setCustomerName] = useState('')
    const [customerPhone, setCustomerPhone] = useState('')
    const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null)
    const [deskNumber, setDeskNumber] = useState('')
+   const [showPaymentModal, setShowPaymentModal] = useState(false)
+   const [showBranchModal, setShowBranchModal] = useState(false)
 
    useEffect(() => {
       if (visible) {
@@ -78,23 +79,58 @@ export default function CheckoutModal({
          return
       }
 
+      // Show payment modal instead of directly submitting
+      setShowPaymentModal(true)
+   }
+
+   const handlePaymentComplete = (paymentData: {
+      method: 'cash' | 'cashless'
+      receivedAmount?: number
+      changeAmount?: number
+   }) => {
       onSubmit({
          customerName: customerName.trim(),
          customerPhone: customerPhone.trim() || undefined,
-         branchId: selectedBranch.id,
+         branchId: selectedBranch!.id,
          deskNumber: deskNumber.trim() || undefined,
+         paymentMethod: paymentData.method,
+         receivedAmount: paymentData.receivedAmount,
+         changeAmount: paymentData.changeAmount,
       })
+      setShowPaymentModal(false)
+   }
+
+   const handleSaveDraft = async () => {
+      if (!selectedBranch) {
+         Alert.alert('Error', 'Please select a branch')
+         return
+      }
+      if (cartItems.length === 0) {
+         Alert.alert('Error', 'Cart is empty')
+         return
+      }
+
+      try {
+         await DraftOrderStorage.saveDraftOrder({
+            customerName: customerName.trim() || 'Draft Order',
+            customerPhone: customerPhone.trim() || undefined,
+            branchId: selectedBranch.id,
+            branchName: selectedBranch.name,
+            deskNumber: deskNumber.trim() || undefined,
+            items: cartItems,
+            totalAmount: total,
+         })
+         
+         Alert.alert('Success', 'Draft order saved successfully!')
+         onClose()
+      } catch (err) {
+         console.error('Failed to save draft:', err)
+         Alert.alert('Error', 'Failed to save draft order')
+      }
    }
 
    const showBranchSelector = () => {
-      const options = branches.map(branch => ({
-         text: branch.name,
-         onPress: () => setSelectedBranch(branch)
-      }))
-      
-      options.push({ text: 'Cancel', onPress: () => {} })
-      
-      Alert.alert('Select Branch', 'Choose a branch for this order', options)
+      setShowBranchModal(true)
    }
 
    return (
@@ -178,30 +214,57 @@ export default function CheckoutModal({
                </ScrollView>
 
                <View style={styles.footer}>
-                  <TouchableOpacity
-                     style={[
-                        styles.submitButton,
-                        {
-                           opacity: (!customerName.trim() || !selectedBranch || cartItems.length === 0 || isSubmitting) ? 0.5 : 1
-                        }
-                     ]}
-                     onPress={handleSubmit}
-                     disabled={!customerName.trim() || !selectedBranch || cartItems.length === 0 || isSubmitting}
-                  >
-                     {isSubmitting ? (
-                        <ActivityIndicator color="white" />
-                     ) : (
-                        <>
-                           <Text style={styles.submitButtonText}>
-                              Place Order - {formatPrice(total)}
-                           </Text>
-                           <Ionicons name="checkmark" size={20} color="#fff" />
-                        </>
-                     )}
-                  </TouchableOpacity>
+                  <View style={styles.footerButtons}>
+                     <TouchableOpacity
+                        style={styles.draftButton}
+                        onPress={handleSaveDraft}
+                        disabled={!selectedBranch || cartItems.length === 0}
+                     >
+                        <Ionicons name="save" size={16} color="#666" />
+                        <Text style={styles.draftButtonText}>Save Draft</Text>
+                     </TouchableOpacity>
+
+                     <TouchableOpacity
+                        style={[
+                           styles.submitButton,
+                           {
+                              opacity: (!customerName.trim() || !selectedBranch || cartItems.length === 0 || isSubmitting) ? 0.5 : 1
+                           }
+                        ]}
+                        onPress={handleSubmit}
+                        disabled={!customerName.trim() || !selectedBranch || cartItems.length === 0 || isSubmitting}
+                     >
+                        {isSubmitting ? (
+                           <ActivityIndicator color="white" />
+                        ) : (
+                           <>
+                              <Text style={styles.submitButtonText}>
+                                 Place Order - {formatPrice(total)}
+                              </Text>
+                              <Ionicons name="checkmark" size={20} color="#fff" />
+                           </>
+                        )}
+                     </TouchableOpacity>
+                  </View>
                </View>
             </View>
          </View>
+
+         <PaymentModal
+            visible={showPaymentModal}
+            total={total}
+            onClose={() => setShowPaymentModal(false)}
+            onPaymentComplete={handlePaymentComplete}
+            formatPrice={formatPrice}
+         />
+
+         <BranchModal
+            visible={showBranchModal}
+            branches={branches}
+            selectedBranch={selectedBranch}
+            onClose={() => setShowBranchModal(false)}
+            onSelectBranch={setSelectedBranch}
+         />
       </Modal>
    )
 }
@@ -330,6 +393,26 @@ const styles = StyleSheet.create({
       borderTopWidth: 1,
       borderTopColor: '#f0f0f0',
    },
+   footerButtons: {
+      flexDirection: 'row',
+      gap: 10,
+   },
+   draftButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#f5f5f5',
+      borderRadius: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      gap: 6,
+      flex: 1,
+      justifyContent: 'center',
+   },
+   draftButtonText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: '#666',
+   },
    submitButton: {
       flexDirection: 'row',
       justifyContent: 'center',
@@ -338,6 +421,7 @@ const styles = StyleSheet.create({
       borderRadius: 8,
       paddingVertical: 15,
       gap: 10,
+      flex: 2,
    },
    submitButtonText: {
       fontSize: 16,
