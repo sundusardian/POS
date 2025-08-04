@@ -105,9 +105,20 @@ export default function POSPaymentScreen() {
             // Don't fail the order creation if printing fails
          }
 
+         // Create success message with queue number
+         let successMessage = `Order #${order.orderNumber} has been created successfully.`
+         
+         if (order.queueNumber) {
+            successMessage += `\n\nQueue Number: ${order.queueNumber}`
+         }
+         
+         if (method === 'cash' && change) {
+            successMessage += `\n\nChange: ${formatPrice(change)}`
+         }
+
          Alert.alert(
             'Order Successful!', 
-            `Order #${order.id} has been created successfully.${method === 'cash' && change ? `\n\nChange: ${formatPrice(change)}` : ''}`,
+            successMessage,
             [
                {
                   text: 'OK',
