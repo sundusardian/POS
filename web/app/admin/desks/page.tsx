@@ -1,19 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Edit, Plus, QrCode, Search, Trash2, RefreshCw, AlertCircle, Users, CheckCircle, XCircle } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Desk } from '@/lib/api-client';
+import { useBranches, useDeskMutations, useDesks } from '@/lib/hooks';
+import { AlertCircle, CheckCircle, Edit, Plus, QrCode, RefreshCw, Search, Trash2, Users, XCircle } from "lucide-react";
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { useDesks, useBranches, useDeskMutations } from '@/lib/hooks';
-import { Desk, CreateDeskDto, UpdateDeskDto } from '@/lib/api-client';
 
 // Desk status configuration
 const DESK_STATUSES = [
@@ -50,6 +50,9 @@ export default function DeskManagement() {
   const [isEditDeskOpen, setIsEditDeskOpen] = useState(false);
   const [editingDesk, setEditingDesk] = useState<Desk | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeskDetailOpen, setIsDeskDetailOpen] = useState(false);
+  const [selectedDesk, setSelectedDesk] = useState<Desk | null>(null);
+  const [isRegeneratingQR, setIsRegeneratingQR] = useState(false);
 
   // Form data
   const [deskForm, setDeskForm] = useState({
@@ -147,14 +150,25 @@ export default function DeskManagement() {
     setIsEditDeskOpen(true);
   };
 
-  const handleRegenerateQR = async (desk: Desk) => {
+  const openDeskDetail = (desk: Desk) => {
+    setSelectedDesk(desk);
+    setIsDeskDetailOpen(true);
+  };
+
+  const handleRegenerateQR = async (desk?: Desk) => {
+    const targetDesk = desk || selectedDesk;
+    if (!targetDesk) return;
+
+    setIsRegeneratingQR(true);
     try {
-      await regenerateQR(desk.id);
+      await regenerateQR(targetDesk.id);
       toast.success('QR code regenerated successfully');
       refetchDesks();
     } catch (error) {
       console.error('Error regenerating QR code:', error);
       toast.error('Failed to regenerate QR code');
+    } finally {
+      setIsRegeneratingQR(false);
     }
   };
 
@@ -169,7 +183,7 @@ export default function DeskManagement() {
   // Statistics
   const totalDesks = desks.length;
   const availableDesks = desks.filter(desk => getDeskStatus(desk) === 'available').length;
-  const occupiedDesks = desks.filter(desk => getDeskStatus(desk) === 'occupied').length;
+  const occupiedDesks = desks.filter(desk => getDeskStatus(desk) !== 'available').length;
   const maintenanceDesks = desks.filter(desk => !desk.isActive).length;
 
   return (
@@ -451,7 +465,16 @@ export default function DeskManagement() {
                             <Button 
                               variant="ghost" 
                               size="sm"
+                              onClick={() => openDeskDetail(desk)}
+                              title="View Details"
+                            >
+                              <QrCode className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
                               onClick={() => openEditDesk(desk)}
+                              title="Edit Desk"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -459,6 +482,7 @@ export default function DeskManagement() {
                               variant="ghost" 
                               size="sm"
                               onClick={() => handleDeleteDesk(desk)}
+                              title="Delete Desk"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -524,6 +548,150 @@ export default function DeskManagement() {
             </Button>
             <Button onClick={handleEditDesk} disabled={isSubmitting || !deskForm.number.trim()}>
               {isSubmitting ? 'Updating...' : 'Update Desk'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Desk Detail Modal */}
+      <Dialog open={isDeskDetailOpen} onOpenChange={setIsDeskDetailOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Table {selectedDesk?.number} Details</DialogTitle>
+            <DialogDescription>
+              View table information and QR code for customer access.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedDesk && (
+            <div className="space-y-6">
+              {/* Desk Information */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Table Number</Label>
+                    <p className="text-lg font-semibold">Table {selectedDesk.number}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Capacity</Label>
+                    <div className="flex items-center gap-1">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-lg font-semibold">{selectedDesk.capacity}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Branch</Label>
+                  <p className="text-lg">{selectedDesk.branch?.name || 'Unknown Branch'}</p>
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+                  <div className="mt-1">
+                    {(() => {
+                      const status = getDeskStatus(selectedDesk);
+                      const statusConfig = getStatusConfig(status);
+                      const StatusIcon = statusConfig.icon;
+                      return (
+                        <Badge className={statusConfig.color}>
+                          <StatusIcon className="mr-1 h-3 w-3" />
+                          {statusConfig.label}
+                        </Badge>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* QR Code Section */}
+              <div className="space-y-4">
+                <div className="border-t pt-4">
+                  <Label className="text-sm font-medium text-muted-foreground">QR Code</Label>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Customers can scan this QR code to access the menu for this table.
+                  </p>
+                  
+                  {selectedDesk.qrCode ? (
+                    <div className="space-y-4">
+                      {/* QR Code Display */}
+                      <div className="flex justify-center p-4 bg-white border rounded-lg">
+                        <div 
+                          className="w-48 h-48 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center"
+                          style={{
+                            backgroundImage: selectedDesk.qrCode ? `url(${selectedDesk.qrCode})` : undefined,
+                            backgroundSize: 'contain',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center'
+                          }}
+                        >
+                          {!selectedDesk.qrCode && (
+                            <div className="text-center text-gray-500">
+                              <QrCode className="h-12 w-12 mx-auto mb-2" />
+                              <p className="text-sm">QR Code</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* QR Code Actions */}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRegenerateQR()}
+                          disabled={isRegeneratingQR}
+                          className="flex-1"
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-2 ${isRegeneratingQR ? 'animate-spin' : ''}`} />
+                          {isRegeneratingQR ? 'Regenerating...' : 'Regenerate QR'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (selectedDesk.qrCode) {
+                              const link = document.createElement('a');
+                              link.href = `data:image/png;base64,${selectedDesk.qrCode}`;
+                              link.download = `table-${selectedDesk.number}-qr.png`;
+                              link.click();
+                            }
+                          }}
+                          className="flex-1"
+                        >
+                          <QrCode className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <QrCode className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground mb-4">No QR code generated yet</p>
+                      <Button
+                        onClick={() => handleRegenerateQR()}
+                        disabled={isRegeneratingQR}
+                        size="sm"
+                      >
+                        <QrCode className="h-4 w-4 mr-2" />
+                        {isRegeneratingQR ? 'Generating...' : 'Generate QR Code'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsDeskDetailOpen(false);
+                setSelectedDesk(null);
+              }}
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

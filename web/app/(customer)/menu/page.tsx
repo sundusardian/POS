@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Star, ArrowRight } from "lucide-react";
+import { Plus, Search, Star, ArrowRight, MapPin } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -91,12 +92,22 @@ const formatCurrency = (amount: number) => {
 
 export default function MenuPage() {
   const { addItem } = useCart();
-  const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [mounted, setMounted] = useState(false);
+  const searchParams = useSearchParams();
+  
+  // Get desk and branch info from QR code URL parameters
+  const deskNumber = searchParams.get('desk');
+  const branchId = searchParams.get('branch');
   
   useEffect(() => {
     setMounted(true);
-  }, []);
+    
+    // Show welcome message if accessed via QR code
+    if (deskNumber && branchId) {
+      toast.success(`Welcome to Table ${deskNumber}! Browse our menu and add items to your cart.`);
+    }
+  }, [deskNumber, branchId]);
   
   if (!mounted) return null;
   
@@ -166,6 +177,12 @@ export default function MenuPage() {
             transition={{ duration: 0.5 }}
           >
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">Our Menu</h1>
+            {deskNumber && (
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin className="h-5 w-5 text-white/90" />
+                <span className="text-white/90 font-medium">Table {deskNumber}</span>
+              </div>
+            )}
             <p className="text-white/90 max-w-lg">
               Browse our delicious offerings and add items to your cart.
             </p>

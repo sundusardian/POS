@@ -1,36 +1,184 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# POS Web Application
+
+Next.js-based web application providing customer-facing pages and admin dashboard for the POS system.
+
+## Features
+
+### Customer Interface
+- **Home Page**: Restaurant introduction and branding
+- **Menu Page**: Browse menu items by category with QR code integration
+- **Cart Page**: Review items, update quantities, and remove items
+- **Checkout Page**: Complete orders with multiple payment options
+
+### Admin Dashboard
+- **Real-time Dashboard**: Live metrics with WebSocket integration
+- **Desk Management**: QR code generation and table management
+- **Menu Management**: CRUD operations for menu items and categories
+- **Staff Management**: Employee management and role assignment
+- **Branch Management**: Multi-location support
+
+## Tech Stack
+
+- **Framework**: Next.js 14 with App Router
+- **Styling**: Tailwind CSS + Shadcn UI components
+- **State Management**: React Context + SWR for data fetching
+- **Real-time**: Socket.IO client for WebSocket connections
+- **Animations**: Framer Motion
+- **Icons**: Lucide React
+- **Notifications**: Sonner (toast notifications)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+
+### Installation
 
 ```bash
+# Navigate to web directory
+cd web
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your configuration
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a `.env.local` file with the following variables:
 
-## Learn More
+```env
+# API Configuration
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
 
-To learn more about Next.js, take a look at the following resources:
+# WebSocket Configuration
+NEXT_PUBLIC_WS_URL=http://localhost:3001
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# App Configuration
+NEXT_PUBLIC_APP_NAME="POS System"
+NEXT_PUBLIC_APP_VERSION="1.0.0"
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Development Mode
+NODE_ENV=development
+```
 
-## Deploy on Vercel
+## Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+web/
+├── app/                    # Next.js App Router
+│   ├── (customer)/        # Customer-facing pages
+│   │   ├── page.tsx       # Home page
+│   │   ├── menu/          # Menu browsing
+│   │   ├── cart/          # Shopping cart
+│   │   └── checkout/      # Order completion
+│   └── admin/             # Admin dashboard
+│       ├── dashboard/     # Main dashboard
+│       ├── desks/         # Desk management
+│       ├── menu/          # Menu management
+│       ├── staff/         # Staff management
+│       └── branches/      # Branch management
+├── components/            # Reusable UI components
+│   ├── ui/               # Shadcn UI components
+│   ├── admin/            # Admin-specific components
+│   └── customer/         # Customer-specific components
+├── lib/                  # Utilities and configurations
+│   ├── api-client.ts     # API client
+│   ├── websocket/        # WebSocket contexts
+│   ├── hooks.ts          # Custom React hooks
+│   └── utils.ts          # Utility functions
+└── public/               # Static assets
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Available Scripts
+
+```bash
+# Development server
+npm run dev
+
+# Production build
+npm run build
+
+# Start production server
+npm run start
+
+# Linting
+npm run lint
+
+# Type checking
+npm run type-check
+```
+
+## Key Features
+
+### Real-time Integration
+- WebSocket connections for live updates
+- Real-time order status changes
+- Live inventory alerts
+- Staff activity monitoring
+
+### QR Code Integration
+- Table-specific QR codes
+- Automatic desk/branch detection
+- Seamless customer experience
+
+### Responsive Design
+- Mobile-first approach
+- Tablet and desktop optimized
+- Touch-friendly interfaces
+
+### Performance
+- Server-side rendering (SSR)
+- Static generation where possible
+- Optimized images and fonts
+- Code splitting and lazy loading
+
+## Development Guidelines
+
+### Code Style
+- Use TypeScript for type safety
+- Follow Next.js best practices
+- Use Tailwind CSS for styling
+- Implement proper error handling
+
+### Component Structure
+- Keep components small and focused
+- Use custom hooks for logic
+- Implement proper loading states
+- Handle error boundaries
+
+### API Integration
+- Use SWR for data fetching
+- Implement proper caching
+- Handle loading and error states
+- Use TypeScript interfaces
+
+## Deployment
+
+### Build for Production
+```bash
+npm run build
+npm run start
+```
+
+### Environment Variables for Production
+Update `.env.production` with production URLs:
+```env
+NEXT_PUBLIC_API_URL=https://your-api-domain.com/api
+NEXT_PUBLIC_WS_URL=https://your-api-domain.com
+```
+
+### Vercel Deployment
+The application is optimized for Vercel deployment:
+1. Connect your repository to Vercel
+2. Set environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch

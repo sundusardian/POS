@@ -37,8 +37,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     setRealtimeOrders(orders);
     setLastUpdate(new Date());
-  }, [orders]);
+  }, []);
 
+  console.log("orders", orders);
+  
   // Handle WebSocket events
   useEffect(() => {
     const handleOrderCreated = (order: any) => {

@@ -63,14 +63,14 @@
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd pos-api
+cd POS/api
 
 # Install dependencies
 npm install
 
 # Set up environment variables
-cp .env.example .env
-# Edit .env with your configuration
+cp .env.example .env.development
+# Edit .env.development with your configuration
 
 # Generate Prisma client
 npx prisma generate
@@ -78,7 +78,7 @@ npx prisma generate
 # Run database migrations
 npx prisma migrate dev
 
-# Seed the database with sample data
+# Seed the database with sample data (optional)
 npx prisma db seed
 ```
 
@@ -217,19 +217,30 @@ npm run test:watch
 
 ### Environment Variables
 ```env
-# Database
-DATABASE_URL="postgresql://user:password@localhost:5432/pos_db"
+# Environment
+NODE_ENV=development
+
+# Database Configuration
+DATABASE_TYPE=sqlite
+DATABASE_NAME=pos_dev.sqlite
+
+# For PostgreSQL (production)
+# DATABASE_TYPE=postgres
+# DATABASE_HOST=localhost
+# DATABASE_PORT=5432
+# DATABASE_USERNAME=postgres
+# DATABASE_PASSWORD=your_password_here
+# DATABASE_NAME=pos_prod
 
 # JWT Configuration
-JWT_SECRET="your-super-secret-jwt-key"
-JWT_EXPIRATION="1d"
+JWT_SECRET=your_jwt_secret_key_change_in_production
+JWT_EXPIRATION=1d
+
+# Frontend URL (for QR code generation)
+FRONTEND_URL=http://localhost:3000
 
 # Server Configuration
 PORT=3001
-NODE_ENV=production
-
-# CORS Origins
-CORS_ORIGINS="https://your-frontend.com,https://your-mobile-app.com"
 ```
 
 ### Docker Deployment

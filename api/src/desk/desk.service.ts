@@ -103,7 +103,12 @@ export class DeskService {
 
   async regenerateQRCode(id: string): Promise<Prisma.DeskGetPayload<{ include: { branch: true } }>> {
     const desk = await this.findOne(id);
-    const qrCodeData = `desk:${desk.number}:branch:${desk.branchId}`;
+    
+    // Generate a proper URL that customers can access
+    // This should point to your customer menu page with desk/branch parameters
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const qrCodeData = `${baseUrl}/menu?desk=${desk.number}&branch=${desk.branchId}`;
+    
     const qrCode = await this.qrCodeService.generateQRCode(qrCodeData);
     
     return this.prisma.desk.update({
