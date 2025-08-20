@@ -21,9 +21,17 @@ The customer-facing web pages have been implemented with the following features:
 - **Cart Page**: Review items in cart, update quantities, and remove items
 - **Checkout Page**: Complete order with various payment options (Credit Card, Bank Transfer, E-Wallet)
 
-### 2. Admin Dashboard (Next)
+### 2. Admin Dashboard 
 
-The admin dashboard will include:
+The admin dashboard includes:
+
+- **Real-time Dashboard** 
+  - Live order monitoring with status updates
+  - Real-time sales figures and revenue tracking
+  - Inventory alerts and low stock notifications
+  - Staff activity monitoring
+  - Branch performance metrics
+  - WebSocket integration with connection status indicators
 
 - Menu management
 - Staff management

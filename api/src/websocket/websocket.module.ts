@@ -2,6 +2,10 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { OrderUpdatesGateway } from './order-updates.gateway';
+import { InventoryUpdatesGateway } from './inventory-updates.gateway';
+import { StaffUpdatesGateway } from './staff-updates.gateway';
+import { BranchUpdatesGateway } from './branch-updates.gateway';
+import { DashboardUpdatesGateway } from './dashboard-updates.gateway';
 
 @Module({
   imports: [
@@ -14,7 +18,19 @@ import { OrderUpdatesGateway } from './order-updates.gateway';
       }),
     }),
   ],
-  providers: [OrderUpdatesGateway],
-  exports: [OrderUpdatesGateway],
+  providers: [
+    OrderUpdatesGateway,
+    InventoryUpdatesGateway,
+    StaffUpdatesGateway,
+    BranchUpdatesGateway,
+    DashboardUpdatesGateway,
+  ],
+  exports: [
+    OrderUpdatesGateway,
+    InventoryUpdatesGateway,
+    StaffUpdatesGateway,
+    BranchUpdatesGateway,
+    DashboardUpdatesGateway,
+  ],
 })
 export class WebsocketModule {}

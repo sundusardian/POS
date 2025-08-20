@@ -18,7 +18,7 @@ import {
   WifiOff, 
   RefreshCw, 
   Bell, 
-  AlertTriangle 
+  AlertTriangle
 } from "lucide-react";
 
 // Hooks and Contexts
@@ -83,12 +83,31 @@ export default function IntegratedDashboard() {
     return orderDate === today && order.status === 'COMPLETED';
   }).length;
 
+  // Event handler functions with proper typing
+  const handleRefreshOrders = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    refetchOrders();
+    toast.success("Orders refreshed!");
+  };
+
+  const handleRefreshBranches = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    refetchBranches();
+    toast.success("Branches refreshed!");
+  };
+
+  const handleRefreshMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    refetchMenu();
+    toast.success("Menu items refreshed!");
+  };
+
   const handleRefreshAll = () => {
     refetchBranches();
     refetchOrders();
     refetchMenu();
     refetchTestData();
-    toast.success("Data refreshed!");
+    toast.success("All data refreshed!");
   };
 
   const isLoading = branchesLoading || ordersLoading || menuLoading || metricsLoading || staffLoading;
@@ -153,8 +172,8 @@ export default function IntegratedDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
             <p className="text-xs flex items-center gap-1 text-green-600">
-              <ArrowUpRight className="h-3 w-3" />
-              Live data
+              <ArrowUpRight className={`h-3 w-3 ${metrics.totalRevenue ? 'animate-pulse' : ''}`} />
+              Live data {metrics.totalRevenue ? '(updating)' : ''}
             </p>
           </CardContent>
         </Card>
@@ -169,7 +188,10 @@ export default function IntegratedDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeOrders}</div>
-            <p className="text-xs text-secondary/80">Currently processing</p>
+            <p className="text-xs flex items-center gap-1 text-secondary/80">
+              {metrics.activeOrders ? <span className="inline-block h-2 w-2 rounded-full bg-secondary animate-ping"></span> : null}
+              Currently processing
+            </p>
           </CardContent>
         </Card>
 
@@ -183,7 +205,10 @@ export default function IntegratedDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{completedToday}</div>
-            <p className="text-xs text-green-600">Orders completed</p>
+            <p className="text-xs flex items-center gap-1 text-green-600">
+              {metrics.completedOrders ? <span className="inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse"></span> : null}
+              Orders completed today
+            </p>
           </CardContent>
         </Card>
 
@@ -215,8 +240,16 @@ export default function IntegratedDashboard() {
         <TabsContent value="orders" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Orders ({realtimeOrders.length})</CardTitle>
-              <CardDescription>Real-time order updates</CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Recent Orders ({realtimeOrders.length})</CardTitle>
+                  <CardDescription>Real-time order updates</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleRefreshOrders} className="flex items-center gap-1">
+                  <RefreshCw className="h-3 w-3" />
+                  Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {realtimeOrders.length === 0 ? (
@@ -256,8 +289,16 @@ export default function IntegratedDashboard() {
         <TabsContent value="branches" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Branches ({branches.length})</CardTitle>
-              <CardDescription>All restaurant branches</CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Branches ({branches.length})</CardTitle>
+                  <CardDescription>All restaurant branches</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleRefreshBranches} className="flex items-center gap-1">
+                  <RefreshCw className="h-3 w-3" />
+                  Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2">
@@ -303,6 +344,7 @@ export default function IntegratedDashboard() {
                 <CardTitle className="flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-amber-500" />
                   Inventory Alerts
+                  {alerts.length > 0 && <span className="ml-2 inline-block h-2 w-2 rounded-full bg-amber-500 animate-ping"></span>}
                 </CardTitle>
                 <CardDescription>Real-time inventory status alerts</CardDescription>
               </CardHeader>
@@ -334,6 +376,7 @@ export default function IntegratedDashboard() {
                 <CardTitle className="flex items-center gap-2">
                   <Bell className="h-5 w-5 text-red-500" />
                   Low Stock Items
+                  {lowStockItems.length > 0 && <span className="ml-2 inline-block h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>}
                 </CardTitle>
                 <CardDescription>Items that need to be restocked</CardDescription>
               </CardHeader>
@@ -366,6 +409,7 @@ export default function IntegratedDashboard() {
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-blue-500" />
                 Staff Activity
+                {activities.length > 0 && <span className="ml-2 inline-block h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>}
               </CardTitle>
               <CardDescription>Real-time staff activity monitoring</CardDescription>
             </CardHeader>
@@ -408,8 +452,16 @@ export default function IntegratedDashboard() {
         <TabsContent value="menu" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Menu Items ({menuItems.length})</CardTitle>
-              <CardDescription>All available menu items</CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Menu Items ({menuItems.length})</CardTitle>
+                  <CardDescription>All available menu items</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleRefreshMenu} className="flex items-center gap-1">
+                  <RefreshCw className="h-3 w-3" />
+                  Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
