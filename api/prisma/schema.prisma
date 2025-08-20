@@ -107,6 +107,7 @@ model Desk {
 model Order {
   id            String      @id @default(uuid())
   orderNumber   String      @unique
+  queueNumber   Int?        // Queue number for order display and kitchen management
   status        OrderStatus @default(PENDING)
   totalAmount   Decimal     @default(0)
   customerName  String?

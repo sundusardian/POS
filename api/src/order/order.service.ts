@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto, OrderStatus } from './dto/update-order.dto';
@@ -45,8 +51,9 @@ export class OrderService {
   }
 
   async create(createOrderDto: CreateOrderDto): Promise<OrderWithDetails> {
-    // Generate unique order number
+    // Generate unique order number and queue number
     const orderNumber = await this.generateOrderNumber();
+    const queueNumber = await this.generateQueueNumber(createOrderDto.branchId);
 
     // Validate branch exists
     const branch = await this.prisma.branch.findUnique({
@@ -64,7 +71,9 @@ export class OrderService {
       });
 
       if (!desk || desk.branchId !== createOrderDto.branchId) {
-        throw new BadRequestException('Desk not found or does not belong to the specified branch');
+        throw new BadRequestException(
+          'Desk not found or does not belong to the specified branch',
+        );
       }
     }
 
@@ -74,7 +83,12 @@ export class OrderService {
         where: { id: createOrderDto.staffId },
       });
 
-      if (!staff || (staff.role !== 'STAFF' && staff.role !== 'MANAGER' && staff.role !== 'ADMIN')) {
+      if (
+        !staff ||
+        (staff.role !== 'STAFF' &&
+          staff.role !== 'MANAGER' &&
+          staff.role !== 'ADMIN')
+      ) {
         throw new BadRequestException('Invalid staff member');
       }
     }
@@ -89,11 +103,15 @@ export class OrderService {
       });
 
       if (!menuItem) {
-        throw new NotFoundException(`Menu item with ID ${item.menuItemId} not found`);
+        throw new NotFoundException(
+          `Menu item with ID ${item.menuItemId} not found`,
+        );
       }
 
       if (!menuItem.isAvailable) {
-        throw new BadRequestException(`Menu item "${menuItem.name}" is not available`);
+        throw new BadRequestException(
+          `Menu item "${menuItem.name}" is not available`,
+        );
       }
 
       const itemTotal = Number(menuItem.price) * item.quantity;
@@ -114,6 +132,7 @@ export class OrderService {
     const order = await this.prisma.order.create({
       data: {
         orderNumber,
+        queueNumber,
         customerName: createOrderDto.customerName,
         customerPhone: createOrderDto.customerPhone,
         notes: createOrderDto.notes,
@@ -157,9 +176,12 @@ export class OrderService {
     return order;
   }
 
-  async findAll(branchId?: string, status?: string, user?: JwtUser): Promise<OrderWithDetails[]> {
+  async findAll(
+    branchId?: string,
+    status?: string,
+    user?: JwtUser,
+  ): Promise<OrderWithDetails[]> {
     const where: Prisma.OrderWhereInput = {};
-    
 
     // If branchId is provided, use it; otherwise use user's branches for filtering
     if (branchId) {
@@ -181,9 +203,12 @@ export class OrderService {
     if (status) {
       // Handle comma-separated status values
       if (status.includes(',')) {
-        const statusArray = status.split(',').map(s => s.trim()).filter(s => 
-          Object.values(OrderStatus).includes(s as OrderStatus)
-        ) as OrderStatus[];
+        const statusArray = status
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) =>
+            Object.values(OrderStatus).includes(s as OrderStatus),
+          ) as OrderStatus[];
         if (statusArray.length > 0) {
           where.status = {
             in: statusArray,
@@ -256,7 +281,10 @@ export class OrderService {
     return order;
   }
 
-  async update(id: string, updateOrderDto: UpdateOrderDto): Promise<OrderWithDetails> {
+  async update(
+    id: string,
+    updateOrderDto: UpdateOrderDto,
+  ): Promise<OrderWithDetails> {
     const existingOrder = await this.prisma.order.findUnique({
       where: { id },
     });
@@ -266,12 +294,17 @@ export class OrderService {
     }
 
     // Prevent updating completed or cancelled orders
-    if (existingOrder.status === 'COMPLETED' || existingOrder.status === 'CANCELLED') {
-      throw new BadRequestException('Cannot update completed or cancelled orders');
+    if (
+      existingOrder.status === 'COMPLETED' ||
+      existingOrder.status === 'CANCELLED'
+    ) {
+      throw new BadRequestException(
+        'Cannot update completed or cancelled orders',
+      );
     }
 
     const previousStatus = existingOrder.status;
-    
+
     const updatedOrder = await this.prisma.order.update({
       where: { id },
       data: {
@@ -304,9 +337,16 @@ export class OrderService {
     });
 
     // Emit real-time event for status change
-    if (this.orderUpdatesGateway && updateOrderDto.status && updateOrderDto.status !== previousStatus) {
-      this.orderUpdatesGateway.emitOrderStatusChanged(updatedOrder, previousStatus);
-      
+    if (
+      this.orderUpdatesGateway &&
+      updateOrderDto.status &&
+      updateOrderDto.status !== previousStatus
+    ) {
+      this.orderUpdatesGateway.emitOrderStatusChanged(
+        updatedOrder,
+        previousStatus,
+      );
+
       // Send kitchen alerts for specific status changes
       if (updateOrderDto.status === 'READY') {
         this.orderUpdatesGateway.emitKitchenAlert(updatedOrder, 'READY');
@@ -378,7 +418,9 @@ export class OrderService {
     }
 
     if (order.status === 'CANCELLED') {
-      throw new BadRequestException('Cannot create payment for cancelled order');
+      throw new BadRequestException(
+        'Cannot create payment for cancelled order',
+      );
     }
 
     const totalAmount = Number(order.totalAmount);
@@ -461,9 +503,13 @@ export class OrderService {
   private async generateOrderNumber(): Promise<string> {
     const today = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-    
+
     // Get the count of orders created today
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayStart = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
     const todayEnd = new Date(todayStart);
     todayEnd.setDate(todayEnd.getDate() + 1);
 
@@ -478,5 +524,32 @@ export class OrderService {
 
     const orderNumber = `ORD-${dateStr}-${String(orderCount + 1).padStart(4, '0')}`;
     return orderNumber;
+  }
+
+  private async generateQueueNumber(branchId: string): Promise<number> {
+    const today = new Date();
+    const todayStart = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+
+    // Get the count of orders created today for this branch
+    // Queue numbers reset daily per branch
+    const orderCount = await this.prisma.order.count({
+      where: {
+        branchId,
+        createdAt: {
+          gte: todayStart,
+          lt: todayEnd,
+        },
+        // Only count orders that are not drafts
+      },
+    });
+
+    // Queue number starts from 1 and increments for each order
+    return orderCount + 1;
   }
 }
